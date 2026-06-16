@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const stickerTypeSchema = z.enum(["svg", "gif"]);
+export const stickerFormatSchema = z.enum(["svg", "gif"]);
 
 export const stickerStatusSchema = z.enum([
   "pending",
@@ -15,16 +15,14 @@ export const stickerStatusSchema = z.enum([
 ]);
 
 export const createStickerSchema = z.object({
-  type: stickerTypeSchema,
+  format: stickerFormatSchema,
   theme: z.string().min(1),
-  category: z.string().min(1),
-  stickerContent: z.string().min(1),
   description: z.string().min(1),
 });
 
 export const stickerResultSchema = z.object({
   provider: z.literal("nano-banana-2"),
-  format: stickerTypeSchema,
+  format: stickerFormatSchema,
   localPath: z.string().optional(),
   notionPageId: z.string().optional(),
 });
@@ -39,7 +37,7 @@ export const stickerRecordSchema = createStickerSchema.extend({
   updatedAt: z.string(),
 });
 
-export type StickerType = z.infer<typeof stickerTypeSchema>;
+export type StickerFormat = z.infer<typeof stickerFormatSchema>;
 export type StickerStatus = z.infer<typeof stickerStatusSchema>;
 export type CreateStickerInput = z.infer<typeof createStickerSchema>;
 export type StickerResult = z.infer<typeof stickerResultSchema>;

@@ -1,7 +1,95 @@
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSticker } from "../lib/api";
+
+const FESTIVALS = [
+  {
+    id: "lunar",
+    label: "🧧 Lunar New Year",
+    color: "#ef4444",
+    glow: "rgba(239, 68, 68, 0.2)",
+    dot: "#fca5a5",
+    hint: "Red envelopes, lanterns, gold coins & fireworks",
+    desc: "red lanterns, gold coins, fireworks, lucky symbols",
+    picks: [
+      ["🏮 Lantern dance", "dancing with red lanterns"],
+      ["🧧 Red envelope", "holding a lucky red envelope"],
+      ["🐲 Lucky dragon", "riding a golden dragon"],
+      ["🎆 Fireworks", "watching fireworks"],
+      ["🍡 Tangyuan", "eating tangyuan"],
+      ["👘 Cheongsam", "wearing a cheongsam dress"],
+    ],
+  },
+  {
+    id: "christmas",
+    label: "🎄 Christmas",
+    color: "#22c55e",
+    glow: "rgba(34, 197, 94, 0.2)",
+    dot: "#86efac",
+    hint: "Christmas trees, santa hat, snow & presents",
+    desc: "Christmas tree, santa hat, snow, presents, reindeer",
+    picks: [
+      ["🎅 Santa hat", "wearing a santa hat"],
+      ["🎁 Gift", "unwrapping a present"],
+      ["⛄ Snowman", "building a snowman"],
+      ["🦌 Reindeer", "riding Rudolph"],
+      ["🍪 Cookies", "baking Christmas cookies"],
+      ["🎶 Caroling", "singing carols"],
+    ],
+  },
+  {
+    id: "halloween",
+    label: "🎃 Halloween",
+    color: "#f97316",
+    glow: "rgba(249, 115, 22, 0.2)",
+    dot: "#fdba74",
+    hint: "Pumpkins, witch hats, bats & spooky night",
+    desc: "jack-o-lantern, witch hat, bats, spooky night moon",
+    picks: [
+      ["🎃 Pumpkin", "inside a glowing pumpkin"],
+      ["🧙 Witch", "wearing a witch hat"],
+      ["🦇 Bats", "flying with bat wings"],
+      ["👻 Ghost", "dressed as a ghost"],
+      ["🕷 Spider", "tangled in a spider web"],
+      ["🍬 Candy", "trick or treating"],
+    ],
+  },
+  {
+    id: "valentine",
+    label: "💝 Valentine",
+    color: "#ec4899",
+    glow: "rgba(236, 72, 153, 0.2)",
+    dot: "#f9a8d4",
+    hint: "Hearts, roses, love letters & romance",
+    desc: "hearts, roses, love letters, cupid arrow, romance",
+    picks: [
+      ["💌 Letter", "writing a love letter"],
+      ["🌹 Roses", "holding red roses"],
+      ["💘 Cupid", "hit by cupid arrow"],
+      ["🍫 Chocolates", "giving chocolates"],
+      ["🥂 Cheers", "toasting champagne"],
+      ["💕 Hearts", "floating with hearts"],
+    ],
+  },
+  {
+    id: "easter",
+    label: "🐣 Easter",
+    color: "#a78bfa",
+    glow: "rgba(167, 139, 250, 0.2)",
+    dot: "#c4b5fd",
+    hint: "Easter eggs, bunny ears, spring flowers & pastels",
+    desc: "Easter eggs, bunny ears, spring flowers, pastel colors",
+    picks: [
+      ["🥚 Easter egg", "decorating an Easter egg"],
+      ["🐰 Bunny", "wearing bunny ears"],
+      ["🌸 Flowers", "in cherry blossoms"],
+      ["🐤 Chick", "holding a baby chick"],
+      ["🍭 Candy hunt", "finding candy"],
+      ["🌈 Rainbow", "hopping over rainbow"],
+    ],
+  },
+];
 
 function getRequiredValue(formData: FormData, fieldName: string): string {
   return String(formData.get(fieldName) ?? "").trim();
@@ -9,8 +97,16 @@ function getRequiredValue(formData: FormData, fieldName: string): string {
 
 export function GeneratePage() {
   const navigate = useNavigate();
+  const [festival, setFestival] = useState(FESTIVALS[0]);
+  const [isFestivalOpen, setIsFestivalOpen] = useState(false);
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function applyPick(prompt: string) {
+    setDescription(prompt);
+    setIsFestivalOpen(false);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -18,23 +114,19 @@ export function GeneratePage() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const theme = getRequiredValue(formData, "theme");
-    const category = getRequiredValue(formData, "category");
-    const stickerContent = getRequiredValue(formData, "stickerContent");
+    const theme = `${festival.label}: ${festival.desc}`;
     const description = getRequiredValue(formData, "description");
 
-    if (!theme || !category || !stickerContent || !description) {
-      setError("Theme, category, sticker content, and description are required.");
+    if (!description) {
+      setError("Description is required.");
       setIsSubmitting(false);
       return;
     }
 
     try {
       const record = await createSticker({
-        type: formData.get("type") === "gif" ? "gif" : "svg",
+        format: "svg",
         theme,
-        category,
-        stickerContent,
         description,
       });
 
@@ -47,48 +139,80 @@ export function GeneratePage() {
   }
 
   return (
-    <section className="panel">
-      <div className="section-heading">
-        <p className="eyebrow">Step 1</p>
-        <h2>Create Sticker Request</h2>
-        <p>Create a local JSON cache record. Generation still uses a Nano Banana 2 placeholder adapter.</p>
+    <section className="generator-card" style={{ "--festival-color": festival.color, "--festival-glow": festival.glow } as CSSProperties}>
+      <div className="ding-hero">
+        <h1>🐱 Ding Ding Cat Sticker Generator</h1>
+        <p>Describe a cat sticker and let AI bring it to life</p>
       </div>
 
-      <form className="form-grid" onSubmit={handleSubmit}>
-        <label>
-          Type
-          <select name="type" defaultValue="svg">
-            <option value="svg">SVG</option>
-            <option value="gif">GIF</option>
-          </select>
-        </label>
+      <form className="ding-form" onSubmit={handleSubmit}>
+        <div>
+          <div className="field-label">Festival style</div>
+          <div className="festival-picker">
+            <button className="festival-trigger" type="button" onClick={() => setIsFestivalOpen((open) => !open)}>
+              <span>{festival.label}</span>
+              <span className={isFestivalOpen ? "chevron open" : "chevron"}>▼</span>
+            </button>
+            {isFestivalOpen ? (
+              <div className="festival-menu">
+                {FESTIVALS.map((item) => (
+                  <button
+                    className={item.id === festival.id ? "festival-option active" : "festival-option"}
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setFestival(item);
+                      setIsFestivalOpen(false);
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    {item.id === festival.id ? <span>✓</span> : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
 
-        <label>
-          Theme
-          <input name="theme" placeholder="Cute animal" required />
-        </label>
+        <div className="festival-hint">✨ {festival.hint}</div>
 
-        <label>
-          Category
-          <input name="category" placeholder="animals" required />
-        </label>
+        <div>
+          <div className="field-label">Describe your sticker</div>
+          <div className="prompt-row">
+            <input
+              name="description"
+              placeholder={`e.g. ${festival.picks[0][1]}`}
+              required
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              onClick={() => setIsFestivalOpen(false)}
+            />
+            <button className="primary-button" type="submit" disabled={isSubmitting || !description.trim()}>
+              {isSubmitting ? "⏳ Generate" : "✦ Generate"}
+            </button>
+          </div>
+        </div>
 
-        <label>
-          Sticker Content
-          <input name="stickerContent" placeholder="cat-coffee" required />
-        </label>
-
-        <label className="full-width">
-          Description
-          <textarea name="description" placeholder="A cute cat holding a coffee cup" rows={6} required />
-        </label>
+        <div>
+          <div className="field-label">Quick picks</div>
+          <div className="quick-picks">
+            {festival.picks.map(([label, prompt]) => (
+              <button key={label} type="button" disabled={isSubmitting} onClick={() => applyPick(prompt)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {error ? <p className="form-message error full-width">{error}</p> : null}
-
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create Local JSON"}
-        </button>
       </form>
+
+      <div className="sticker-canvas" onClick={() => setIsFestivalOpen(false)}>
+        <div className={isSubmitting ? "cat-bounce" : ""}>🐾</div>
+        <p>{isSubmitting ? "Ding Ding is saving..." : "Your sticker will appear here"}</p>
+      </div>
+
+      <p className="credit-line">Made with love by Tramplus · Powered by Gemini Nano Banana 2</p>
     </section>
   );
 }

@@ -16,15 +16,15 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "") || "untitled";
 }
 
-function getRecordDirectory(record: Pick<StickerRecord, "category" | "stickerContent">): string {
-  return path.join(historyRoot, slugify(record.category), slugify(record.stickerContent));
+function getRecordDirectory(record: Pick<StickerRecord, "theme" | "description">): string {
+  return path.join(historyRoot, slugify(record.theme), slugify(record.description));
 }
 
-function getRecordPath(record: Pick<StickerRecord, "category" | "stickerContent">): string {
+function getRecordPath(record: Pick<StickerRecord, "theme" | "description">): string {
   return path.join(getRecordDirectory(record), recordFileName);
 }
 
-function getRelativeRecordPath(record: Pick<StickerRecord, "category" | "stickerContent">): string {
+function getRelativeRecordPath(record: Pick<StickerRecord, "theme" | "description">): string {
   return path.relative(projectRoot, getRecordPath(record));
 }
 
@@ -89,9 +89,7 @@ export async function createStickerRecord(input: CreateStickerInput): Promise<St
 
   if (await pathExists(recordPath)) {
     const existing = await readRecordFile(recordPath);
-    const error = new Error(
-      `Sticker cache already exists for ${input.category}/${input.stickerContent}: ${existing.id}`,
-    );
+    const error = new Error(`Sticker cache already exists for this theme and description: ${existing.id}`);
 
     Object.assign(error, { statusCode: 409 });
     throw error;

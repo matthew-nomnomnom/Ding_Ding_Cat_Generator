@@ -51,17 +51,17 @@ export function HistoryPage() {
             <Link className="record-card" key={record.id} to={`/stickers/${record.id}`}>
               <div>
                 <p className="eyebrow">{record.status}</p>
-                <h3>{record.stickerContent}</h3>
+                <h3>{record.description}</h3>
                 <p>{record.description}</p>
               </div>
               <dl>
                 <div>
-                  <dt>Type</dt>
-                  <dd>{record.type.toUpperCase()}</dd>
+                  <dt>Format</dt>
+                  <dd>{record.format.toUpperCase()}</dd>
                 </div>
                 <div>
-                  <dt>Category</dt>
-                  <dd>{record.category}</dd>
+                  <dt>Theme</dt>
+                  <dd>{record.theme}</dd>
                 </div>
                 <div>
                   <dt>JSON</dt>

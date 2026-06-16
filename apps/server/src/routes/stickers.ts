@@ -82,7 +82,7 @@ stickersRouter.post("/:id/accept", async (req, res, next) => {
       status: "uploaded",
       result: accepted.result
         ? { ...accepted.result, notionPageId }
-        : { provider: "nano-banana-2", format: accepted.type, notionPageId },
+        : { provider: "nano-banana-2", format: accepted.format, notionPageId },
     });
 
     await deleteStickerCache(uploaded.id);

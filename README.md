@@ -75,10 +75,8 @@ Sticker requests use the shared schema in `packages/shared/src/sticker.ts`.
 ```ts
 type StickerRecord = {
   id: string;
-  type: "svg" | "gif";
+  format: "svg" | "gif";
   theme: string;
-  category: string;
-  stickerContent: string;
   description: string;
   status:
     | "pending"
@@ -96,6 +94,7 @@ type StickerRecord = {
     localPath?: string;
     notionPageId?: string;
   };
+  cachePath?: string;
   error?: string;
   createdAt: string;
   updatedAt: string;
@@ -109,27 +108,27 @@ The intended local storage layout is:
 ```txt
 data/
   baseline/
-    <category>/
-      <sticker-content>/
+    <theme-slug>/
+      <description-slug>/
   generated/
-    <category>/
-      <sticker-content>/
+    <theme-slug>/
+      <description-slug>/
         result.svg
         result.gif
   history/
-    <category>/
-      <sticker-content>/
+    <theme-slug>/
+      <description-slug>/
         request.json
 ```
 
-`apps/server/src/services/stickerStorage.ts` persists local JSON cache files to this layout. Accepted records are removed after the upload boundary succeeds, and empty cache folders are pruned automatically.
+`apps/server/src/services/stickerStorage.ts` persists local JSON cache files to this layout. The folder names are derived from `theme` and `description`; the saved JSON keeps the main request attributes as `format`, `theme`, and `description`. Accepted records are removed after the upload boundary succeeds, and empty cache folders are pruned automatically.
 
 Generated placeholder assets are saved under:
 
 ```txt
 data/generated/
-  <category>/
-    <sticker-content>/
+  <theme-slug>/
+    <description-slug>/
       result.svg
       result.gif
 ```
@@ -213,7 +212,7 @@ POST   /api/stickers/:id/reject
 Current behavior:
 
 - `POST /api/stickers` validates input and creates a local JSON cache record.
-- Duplicate `category + stickerContent` cache paths are rejected to avoid overwriting existing JSON.
+- Duplicate `theme + description` cache paths are rejected to avoid overwriting existing JSON.
 - `POST /api/stickers/:id/generate` writes a placeholder generated asset and updates the cached JSON with `result.localPath`.
 - `POST /api/stickers/:id/accept` returns a placeholder Notion page ID and removes the local JSON cache record.
 - Cache deletion prunes empty parent folders under `data/history`.
@@ -224,9 +223,7 @@ Notion should receive only accepted final records. Drafts, failed attempts, reje
 
 Recommended Notion fields:
 
-- `Category`
-- `Sticker Content`
-- `Type`
+- `Format`
 - `Theme`
 - `Description`
 - `Status`

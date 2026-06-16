@@ -95,7 +95,7 @@ export function StickerDetailPage() {
 
           <aside className="record-summary">
             <p className="eyebrow">{record.status}</p>
-            <h3>{record.stickerContent}</h3>
+            <h3>{record.description}</h3>
             <dl>
               <div>
                 <dt>ID</dt>
@@ -106,8 +106,8 @@ export function StickerDetailPage() {
                 <dd>{record.cachePath ?? "Not available"}</dd>
               </div>
               <div>
-                <dt>Type</dt>
-                <dd>{record.type}</dd>
+                <dt>Format</dt>
+                <dd>{record.format}</dd>
               </div>
               <div>
                 <dt>Generated Asset Path</dt>
@@ -116,10 +116,6 @@ export function StickerDetailPage() {
               <div>
                 <dt>Theme</dt>
                 <dd>{record.theme}</dd>
-              </div>
-              <div>
-                <dt>Category</dt>
-                <dd>{record.category}</dd>
               </div>
               <div>
                 <dt>Description</dt>
