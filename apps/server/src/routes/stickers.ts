@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { generateSticker } from "../services/nanoBanana.js";
-import { getAvailableNotionContentName, uploadAcceptedStickerRecord } from "../services/notion.js";
+import { getAvailableNotionContentName, uploadAcceptedStickerRecord, uploadRejectedStickerRun } from "../services/notion.js";
 import {
   createStickerRecord,
   deleteStickerCache,
@@ -24,6 +24,10 @@ const refineStickerSchema = z.object({
 
 const acceptStickerSchema = z.object({
   selectedPath: z.string().min(1).optional(),
+});
+
+const rejectStickerSchema = z.object({
+  reason: z.string().optional(),
 });
 
 function assertGeneratedPath(relativePath: string): string {
@@ -190,8 +194,20 @@ stickersRouter.post("/:id/accept", async (req, res, next) => {
 
 stickersRouter.post("/:id/reject", async (req, res, next) => {
   try {
-    const updated = await updateStickerRecord(req.params.id, { status: "rejected" });
-    res.json(updated);
+    const input = rejectStickerSchema.parse(req.body ?? {});
+    const record = await getStickerRecord(req.params.id);
+
+    if (!record) {
+      res.status(404).json({ error: "Sticker record not found" });
+      return;
+    }
+
+    const rejected = await updateStickerRecord(record.id, { status: "rejected" });
+    const notionPageId = await uploadRejectedStickerRun(rejected, input.reason?.trim() || undefined);
+
+    await deleteStickerCache(rejected.id);
+
+    res.json({ rejected: true, notionPageId });
   } catch (error) {
     next(error);
   }

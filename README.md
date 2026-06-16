@@ -243,51 +243,65 @@ POST   /api/stickers/:id/reject
 Current behavior:
 
 - `POST /api/stickers` validates input and creates an in-memory draft record.
-- Duplicate `theme + description` cache paths are rejected to avoid overwriting existing JSON.
 - `POST /api/stickers/:id/generate` creates five runtime-only candidates and updates the draft record with `result.candidates`.
 - `POST /api/stickers/:id/refine` sends the selected candidate and fine-tune requirement back to Nano Banana 2, then returns five refined candidates.
-- `POST /api/stickers/:id/accept` copies the selected candidate to `data/generated/<theme>/<motion>.*`, writes `data/history/<theme>/<motion>.json`, updates `result.fileUrl`, and returns the Notion page ID.
+- `POST /api/stickers/:id/accept` uploads the selected runtime candidate to the Notion `generated` table, writes the accepted JSON to the Notion `history` table, clears the runtime draft, and returns the Notion page ID.
+- `POST /api/stickers/:id/reject` uploads the rejected runtime candidates and optional rejection reason to the Notion `rejected` table, then clears the runtime draft.
 
 ## Notion Strategy
 
-Notion mirrors the local `data/` folder as three separate child databases under the configured Notion page: `baseline`, `generated`, and `history`. Each row is one actual local file from the matching folder. Drafts, failed attempts, rejected generations, and temporary candidate files under `.runtime/` remain local.
+Notion is the persistence layer and uses four child databases under the configured Notion page: `baseline`, `generated`, `history`, and `rejected`. Runtime candidate files under `.runtime/` remain local only while the user is deciding.
 
-Set `NOTION_TOKEN` and `NOTION_DATABASE_ID` in `.env`. `NOTION_DATABASE_ID` can be either an existing database id or the id of a blank Notion page. If it is a blank page id, the server creates a `Sticker Generation History` database inside that page and logs the new database id; put that new id back into `.env` for future syncs.
+Set `NOTION_TOKEN` and `NOTION_DATABASE_ID` in `.env`. `NOTION_DATABASE_ID` can be either an existing database id or the id of a blank Notion page. The server creates or reuses the required child databases inside that page.
 
-To import the current local `data/` folder into those three cloud databases, run the server and call:
+To import the current local `data/` folder into `baseline`, `generated`, and `history`, run the server and call:
 
 ```bash
 curl -X POST http://localhost:4000/api/notion/import
 ```
 
-Each table import is keyed by `Relative Path`, so rerunning it updates existing Notion rows instead of creating duplicate rows. Image files are uploaded to Notion and attached to the row page, so opening the row shows the actual image. JSON files are written into the row page as a JSON code block.
+Each import table is keyed by `Relative Path`, so rerunning it updates existing Notion rows instead of creating duplicate rows. Image files are uploaded to Notion and attached to the row page, so opening the row shows the actual image. JSON files are written into the row page as a JSON code block.
 
-Each table has the same fields:
+The `baseline`, `generated`, and `history` tables have:
 
 - `Name`
-- `Group`: `baseline`, `generated`, or `history`
 - `Category`: the first folder under the group, for example `lunar_new_year`
 - `Content`: the actual file path under the category
 - `File Type`: `image` or `json`
 - `Extension`
 - `Relative Path`
-- `File URL`: populated for generated images
 - `Size Bytes`
 - `Updated At`
 
+The `rejected` table has:
+
+- `Name`
+- `Record ID`
+- `Theme`
+- `Motion`
+- `Prompt`
+- `Reject Reason`
+- `Selected Candidate`
+- `Candidate Count`
+- `Model`
+- `Created At`
+- `Updated At`
+
+Opening a rejected row shows the rejected candidate images.
+
 ## Cache Cleanup Policy
 
-Local JSON cache should be removed only after Notion confirms a successful upload.
+Runtime draft state should be removed after Notion confirms accept or reject upload.
 
 ```txt
 accept sticker
   -> mark local record as uploading
-  -> upload final JSON to Notion
-  -> if upload succeeds, remove local JSON cache
-  -> if upload fails, keep local JSON and mark upload_failed
+  -> upload final image and JSON to Notion
+  -> if upload succeeds, remove runtime draft
+  -> if upload fails, keep runtime draft for retry
 ```
 
-Generated assets should stay local until Notion or another asset store contains a durable copy or URL.
+Rejected candidates are uploaded to the Notion `rejected` table before the runtime draft is discarded.
 
 ## Next Steps
 

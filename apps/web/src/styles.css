@@ -602,9 +602,24 @@ dd {
   width: 100%;
 }
 
-.refine-box button {
+.refine-box button,
+.download-button {
+  align-items: center;
   border-radius: 12px;
+  display: inline-flex;
+  justify-content: center;
   min-height: 52px;
+}
+
+.download-button {
+  border: 1px solid #303030;
+  color: #f5f5f5;
+  padding: 0 18px;
+  text-decoration: none;
+}
+
+.download-button:hover {
+  border-color: #555;
 }
 
 .result-actions button:last-child {

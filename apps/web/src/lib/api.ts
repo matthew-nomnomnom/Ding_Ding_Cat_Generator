@@ -49,8 +49,11 @@ export function refineSticker(id: string, input: { selectedPath: string; require
   });
 }
 
-export function rejectSticker(id: string): Promise<StickerRecord> {
-  return request<StickerRecord>(`/api/stickers/${id}/reject`, { method: "POST" });
+export function rejectSticker(id: string, input?: { reason?: string }): Promise<{ rejected: true; notionPageId: string }> {
+  return request<{ rejected: true; notionPageId: string }>(`/api/stickers/${id}/reject`, {
+    body: JSON.stringify(input ?? {}),
+    method: "POST",
+  });
 }
 
 export function acceptSticker(id: string, input?: { selectedPath?: string }): Promise<{ uploaded: true; notionPageId: string }> {

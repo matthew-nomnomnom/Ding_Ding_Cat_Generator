@@ -116,6 +116,7 @@ export function GeneratePage() {
   const [record, setRecord] = useState<StickerRecord | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [refinementRequirement, setRefinementRequirement] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,6 +138,7 @@ export function GeneratePage() {
     setRecord(null);
     setSelectedPath(null);
     setRefinementRequirement("");
+    setRejectReason("");
 
     const formData = new FormData(event.currentTarget);
     const theme = festival.id;
@@ -229,14 +231,15 @@ export function GeneratePage() {
 
     try {
       if (action === "reject") {
-        setRecord(await rejectSticker(record.id));
-        setMessage("Rejected. The local JSON remains available in history for retry or review.");
+        await rejectSticker(record.id, { reason: rejectReason.trim() || undefined });
+        window.location.reload();
       } else {
         await acceptSticker(record.id, { selectedPath: selectedCandidate ?? undefined });
         setRecord(null);
         setSelectedPath(null);
         setDescription("");
         setRefinementRequirement("");
+        setRejectReason("");
         setMessage("Accepted and uploaded. The local JSON cache was removed.");
       }
     } catch (caughtError) {
@@ -376,6 +379,23 @@ export function GeneratePage() {
               </button>
             </div>
 
+            <div className="refine-box">
+              <label>
+                Reject reason
+                <textarea
+                  placeholder="Optional: what went wrong? e.g. wrong character, bad text, too cluttered"
+                  rows={2}
+                  value={rejectReason}
+                  onChange={(event) => setRejectReason(event.target.value)}
+                />
+              </label>
+              {selectedCandidate ? (
+                <a className="download-button" href={getGeneratedAssetUrl(selectedCandidate)} download>
+                  Download selected
+                </a>
+              ) : null}
+            </div>
+
             <div className="result-actions">
               <button type="button" disabled={activeAction !== null} onClick={() => void handleRegenerate()}>
                 {activeAction === "regenerate" ? "Regenerating..." : "Regenerate five"}
@@ -384,7 +404,7 @@ export function GeneratePage() {
                 {activeAction === "reject" ? "Rejecting..." : "Reject"}
               </button>
               <button type="button" disabled={activeAction !== null || !selectedCandidate} onClick={() => void handleDecision("accept")}>
-                {activeAction === "accept" ? "Uploading..." : "Accept + upload"}
+                {activeAction === "accept" ? "Uploading..." : "Accept"}
               </button>
             </div>
           </div>
