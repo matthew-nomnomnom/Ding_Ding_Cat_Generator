@@ -1,0 +1,97 @@
+categories:
+  politics:
+    keywords:
+      - protest
+      - riot
+      - revolution
+      - regime
+      - propaganda
+      - dictatorship
+      - coup
+      - uprising
+      - insurrection
+      - separatist
+      - independence movement
+      - political party
+      - election campaign
+      - vote for
+    description: "Political imagery and slogans"
+
+  violence_gore:
+    keywords:
+      - kill
+      - murder
+      - blood
+      - gore
+      - weapon
+      - gun
+      - knife attack
+      - dead
+      - corpse
+      - brutal
+      - slaughter
+      - stab
+      - shoot
+      - explode
+      - bombing
+      - terrorist
+    description: "Violence, gore, weapons"
+
+  nsfw_adult:
+    keywords:
+      - nude
+      - naked
+      - sex
+      - porn
+      - erotic
+      - strip
+      - sexual
+      - explicit
+      - genital
+      - breast
+    description: "Adult and explicit content"
+
+  hate_speech:
+    keywords:
+      - racial slur
+      - racist
+      - xenophobic
+      - homophobic
+      - transphobic
+      - discriminatory
+      - hate group
+    description: "Hate speech and discrimination"
+
+  self_harm:
+    keywords:
+      - suicide
+      - self-harm
+      - self injur
+      - cut myself
+      - hanging
+      - overdose
+    description: "Self-harm and suicide references"
+
+overrides:
+  halloween:
+    allow_keywords:
+      - ghost
+      - witch
+      - vampire
+      - spooky
+      - skeleton
+      - cute monster
+      - haunted
+      - cobweb
+      - bat
+      - pumpkin
+    still_block:
+      - gore
+      - blood
+      - dead
+      - corpse
+      - kill
+      - horror
+      - terrifying
+      - nightmare
+    description: "Halloween allows mild spookiness but still blocks gore/horror"

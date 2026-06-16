@@ -1,0 +1,32 @@
+# Ding Ding Cat Sticker Generator — Settings
+# Copy this to settings.local.yaml and fill in your values.
+# settings.local.yaml is git-ignored.
+
+# ---- Replicate API ----
+replicate:
+  api_key: ""                             # Paste your Replicate API token here
+  model: "your-username/dingdingcat-lora" # Format: owner/model-name
+  version: ""                             # Specific model version hash
+
+# ---- Generation defaults ----
+generation:
+  width: 1024
+  height: 1024
+  num_inference_steps: 28
+  guidance_scale: 7.5
+  num_outputs: 8
+  negative_prompt: "blurry, low quality, distorted, deformed, extra limbs, bad anatomy, watermark, text, nsfw, ugly, distorted face, mutation"
+
+# ---- Output ----
+output:
+  directory: "./output"
+  sticker_size: 512
+  webp_quality: 80
+  max_file_size_kb: 100
+  remove_background: true
+
+# ---- UI ----
+ui:
+  language: "en"         # "en" or "zh"
+  theme: "light"         # "light" or "dark"
+  title: "Ding Ding Cat Sticker Generator"

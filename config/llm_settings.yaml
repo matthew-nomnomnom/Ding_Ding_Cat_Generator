@@ -1,0 +1,29 @@
+gemini:
+  model: "gemini-2.5-flash"
+  temperature: 0.3
+  max_output_tokens: 512
+  timeout_seconds: 15
+  api_key_env: "GEMINI_API_KEY"
+
+retry:
+  max_attempts: 3
+  backoff_seconds: [2, 4, 8]
+
+circuit_breaker:
+  failure_threshold: 5
+  window_seconds: 60
+  reset_after_seconds: 300
+
+safety:
+  blocklist_file: "config/safety_blocklist.yaml"
+  enable_llm_classifier: true
+  classifier_model: "gemini-2.5-flash"
+
+history:
+  max_records: 200
+  context_record_count: 5
+  archive_overflow: true
+
+cache:
+  ttl_seconds: 86400
+  max_entries: 1000

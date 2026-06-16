@@ -1,8 +1,65 @@
-node_modules/
+# ===========================
+# Ding Ding Cat Sticker Generator
+# ===========================
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
 dist/
+build/
+*.spec
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment & secrets
 .env
-.DS_Store
+.env.local
+.env.*.local
+service-account.json
+*.pem
+
+# API keys
+.replicate_api_key
+
+# Node (for frontend)
+node_modules/
+*.tsbuildinfo
+
+# LoRA model files (large binaries)
+assets/lora/*.safetensors
+assets/lora/*.ckpt
+assets/lora/*.pt
+
+# Reference / training images
+assets/training_images/*.png
+assets/training_images/*.jpg
+assets/training_images/*.jpeg
+assets/training_images/*.webp
+
+# Generated output
+output/
+stickers/
+*.webp
+*.zip
 data/history/
 data/generated/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Logs
 *.log
-*.tsbuildinfo
+logs/

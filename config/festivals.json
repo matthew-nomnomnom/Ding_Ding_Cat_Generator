@@ -1,0 +1,407 @@
+{
+  "mascot": {
+    "name": "Ding Ding Cat",
+    "name_zh": "叮叮貓",
+    "trigger_word": "dingdingcat",
+    "style_note": "3D cartoon style, adorable, high quality, Pixar-like rendering"
+  },
+  "default_settings": {
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 28,
+    "guidance_scale": 7.5,
+    "negative_prompt": "blurry, low quality, deformed, extra limbs, bad anatomy, watermark, text, nsfw, ugly, distorted face"
+  },
+  "festivals": [
+    {
+      "id": "new-year",
+      "name_en": "New Year's Day",
+      "name_zh": "元旦",
+      "month": 1,
+      "color_palette": "gold, silver, midnight blue",
+      "templates": [
+        {
+          "id": "new-year-01",
+          "label": "Fireworks & Party Hat",
+          "prompt": "dingdingcat wearing a party hat, holding sparklers, fireworks in background, countdown clock showing midnight, gold and silver confetti, 3D cartoon style, adorable, high quality, festive celebration",
+          "props": ["party hat", "sparklers", "confetti", "noisemaker"],
+          "backgrounds": ["fireworks", "city skyline at midnight", "celebration venue"]
+        },
+        {
+          "id": "new-year-02",
+          "label": "Tram Celebration",
+          "prompt": "dingdingcat riding a decorated Hong Kong tram with New Year banners, fireworks over Victoria Harbour, festive atmosphere, gold and red decorations, 3D cartoon style, adorable, high quality",
+          "props": ["decorated tram", "banner", "fireworks"],
+          "backgrounds": ["Victoria Harbour", "Hong Kong skyline"]
+        },
+        {
+          "id": "new-year-03",
+          "label": "Lucky Cat New Year",
+          "prompt": "dingdingcat as a lucky cat (maneki neko) waving paw, gold coin decorations, kumquat tree nearby, red and gold festive, 3D cartoon style, adorable, high quality",
+          "props": ["gold coin", "kumquat", "red ribbon"],
+          "backgrounds": ["festive red backdrop", "shop entrance"]
+        }
+      ]
+    },
+    {
+      "id": "chinese-new-year",
+      "name_en": "Chinese New Year",
+      "name_zh": "農曆新年",
+      "month": 2,
+      "color_palette": "red, gold, crimson",
+      "templates": [
+        {
+          "id": "cny-01",
+          "label": "Red Envelopes",
+          "prompt": "dingdingcat wearing a red cheongsam with gold embroidery, holding red envelopes (lai see), surrounded by mandarin oranges, festive decorations, red and gold tones, 3D cartoon style, adorable, high quality",
+          "props": ["red envelope", "mandarin orange", "cheongsam", "gold ingot"],
+          "backgrounds": ["festive red wall", "New Year market", "family home"]
+        },
+        {
+          "id": "cny-02",
+          "label": "Dragon Dance",
+          "prompt": "dingdingcat performing dragon dance, holding dragon pole, colorful dragon costume with scales, confetti and firecrackers, street celebration, 3D cartoon style, adorable, high quality",
+          "props": ["dragon costume", "drum", "firecrackers"],
+          "backgrounds": ["festive street", "temple entrance", "parade"]
+        },
+        {
+          "id": "cny-03",
+          "label": "New Year Greeting",
+          "prompt": "dingdingcat bowing with hands clasped in greeting gesture, wearing traditional Tang suit, cherry blossom branches, red lanterns, blessing scrolls, 3D cartoon style, adorable, high quality",
+          "props": ["cherry blossom", "red lantern", "blessing scroll"],
+          "backgrounds": ["red and gold backdrop", "temple", "spring garden"]
+        },
+        {
+          "id": "cny-04",
+          "label": "Tram in Red",
+          "prompt": "dingdingcat inside a red-decorated Hong Kong tram, traditional New Year decorations hanging, looking out window at festive street, firecrackers visible, 3D cartoon style, adorable, high quality",
+          "props": ["red lantern", "tram seat", "window"],
+          "backgrounds": ["decorated tram interior", "festive street view"]
+        },
+        {
+          "id": "cny-05",
+          "label": "Lion Dance",
+          "prompt": "dingdingcat wearing a small lion dance headpiece, playful pose, lettuce and red envelope on ground, drum in background, 3D cartoon style, adorable, high quality",
+          "props": ["lion headpiece", "lettuce", "drum"],
+          "backgrounds": ["street performance", "festive backdrop"]
+        }
+      ]
+    },
+    {
+      "id": "bun-festival",
+      "name_en": "Cheung Chau Bun Festival",
+      "name_zh": "長洲太平清醮",
+      "month": 4,
+      "color_palette": "white, pink, bamboo green",
+      "templates": [
+        {
+          "id": "bun-01",
+          "label": "Bun Tower",
+          "prompt": "dingdingcat climbing a tower of steamed buns (ping on buns), wearing traditional white vest, bamboo tower structure, outdoor festival atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["steamed bun", "bamboo pole", "bun tower"],
+          "backgrounds": ["outdoor festival", "Pak Tai Temple", "Cheung Chau island"]
+        },
+        {
+          "id": "bun-02",
+          "label": "Parade Drumming",
+          "prompt": "dingdingcat playing a large Chinese drum in a festival parade, wearing ceremonial outfit, lion dancers nearby, island backdrop, 3D cartoon style, adorable, high quality",
+          "props": ["Chinese drum", "drumsticks", "ceremonial robe"],
+          "backgrounds": ["festival parade", "island street", "temple ground"]
+        }
+      ]
+    },
+    {
+      "id": "easter",
+      "name_en": "Easter",
+      "name_zh": "復活節",
+      "month": 4,
+      "color_palette": "pastel pink, yellow, mint green",
+      "templates": [
+        {
+          "id": "easter-01",
+          "label": "Easter Bunny Cat",
+          "prompt": "dingdingcat wearing bunny ears headband, holding a decorated Easter egg, surrounded by colorful eggs in a spring garden, pastel colors, 3D cartoon style, adorable, high quality",
+          "props": ["bunny ears", "Easter egg", "flower basket"],
+          "backgrounds": ["spring garden", "meadow", "Easter egg hunt"]
+        },
+        {
+          "id": "easter-02",
+          "label": "Egg Hunt",
+          "prompt": "dingdingcat searching for Easter eggs in a garden, holding a small basket, butterflies and flowers, bright spring sunshine, pastel tones, 3D cartoon style, adorable, high quality",
+          "props": ["basket", "Easter egg", "butterfly"],
+          "backgrounds": ["garden", "park", "flower meadow"]
+        }
+      ]
+    },
+    {
+      "id": "dragon-boat",
+      "name_en": "Dragon Boat Festival",
+      "name_zh": "端午節",
+      "month": 6,
+      "color_palette": "green, brown, blue, gold",
+      "templates": [
+        {
+          "id": "dragonboat-01",
+          "label": "Eating Zongzi",
+          "prompt": "dingdingcat happily eating a zongzi (rice dumpling wrapped in bamboo leaf), traditional Dragon Boat Festival setting, green bamboo leaves, 3D cartoon style, adorable, high quality",
+          "props": ["zongzi", "bamboo leaf", "tea cup"],
+          "backgrounds": ["riverside", "traditional home", "dragon boat pier"]
+        },
+        {
+          "id": "dragonboat-02",
+          "label": "Racing",
+          "prompt": "dingdingcat paddling a dragon boat with enthusiasm, wearing a team headband, drum at front of boat, splashing water, race atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["paddle", "drum", "headband"],
+          "backgrounds": ["river race", "Hong Kong harbour", "water splash"]
+        },
+        {
+          "id": "dragonboat-03",
+          "label": "Drumming Cat",
+          "prompt": "dingdingcat beating a large drum on the dragon boat bow, energetic expression, teammates paddling behind, water splashing, festival flags, 3D cartoon style, adorable, high quality",
+          "props": ["drum", "drumsticks", "team flag"],
+          "backgrounds": ["dragon boat", "river", "festival crowd on shore"]
+        }
+      ]
+    },
+    {
+      "id": "summer",
+      "name_en": "Summer Fun",
+      "name_zh": "夏日樂趣",
+      "month": 7,
+      "color_palette": "sky blue, yellow, turquoise",
+      "templates": [
+        {
+          "id": "summer-01",
+          "label": "Beach Day",
+          "prompt": "dingdingcat at a sunny beach, wearing sunglasses, drinking coconut water, sandcastle nearby, blue sky and ocean, 3D cartoon style, adorable, high quality",
+          "props": ["sunglasses", "coconut", "sandcastle", "beach ball"],
+          "backgrounds": ["beach", "ocean view", "Repulse Bay"]
+        },
+        {
+          "id": "summer-02",
+          "label": "Ice Cream",
+          "prompt": "dingdingcat holding a large soft-serve ice cream cone, enjoying on a hot day, summer sun, colorful sprinkles, 3D cartoon style, adorable, high quality",
+          "props": ["ice cream cone", "fan", "sun hat"],
+          "backgrounds": ["summer street", "park", "beach promenade"]
+        },
+        {
+          "id": "summer-03",
+          "label": "Watermelon",
+          "prompt": "dingdingcat eating a big slice of watermelon, juice dripping, summer picnic setting, chequered blanket, 3D cartoon style, adorable, high quality",
+          "props": ["watermelon slice", "picnic basket", "fan"],
+          "backgrounds": ["park", "picnic area", "grassy field"]
+        }
+      ]
+    },
+    {
+      "id": "hksar-day",
+      "name_en": "HKSAR Establishment Day",
+      "name_zh": "香港特別行政區成立紀念日",
+      "month": 7,
+      "color_palette": "red, white, bauhinia pink",
+      "templates": [
+        {
+          "id": "hksar-01",
+          "label": "Fireworks Over Harbour",
+          "prompt": "dingdingcat watching fireworks over Victoria Harbour from the Peak, holding a small bauhinia flag, wearing festive outfit, night sky with fireworks, 3D cartoon style, adorable, high quality",
+          "props": ["bauhinia flag", "binoculars", "festive headband"],
+          "backgrounds": ["Victoria Harbour", "The Peak", "fireworks display"]
+        },
+        {
+          "id": "hksar-02",
+          "label": "Tram Pride",
+          "prompt": "dingdingcat on a Hong Kong tram decorated with bauhinia flowers and flags, smiling proudly, daytime festive atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["bauhinia flower", "flag", "tram bell"],
+          "backgrounds": ["Hong Kong street", "tram interior", "Central district"]
+        }
+      ]
+    },
+    {
+      "id": "qixi",
+      "name_en": "Qixi Festival",
+      "name_zh": "七夕",
+      "month": 8,
+      "color_palette": "magenta, starry blue, silver",
+      "templates": [
+        {
+          "id": "qixi-01",
+          "label": "Magpie Bridge",
+          "prompt": "dingdingcat standing on a bridge of magpies across the Milky Way, romantic starry night sky, traditional Qixi atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["magpie", "star", "silk ribbon"],
+          "backgrounds": ["Milky Way", "starry sky", "magpie bridge"]
+        },
+        {
+          "id": "qixi-02",
+          "label": "Weaving Girl Cat",
+          "prompt": "dingdingcat as the weaving girl holding silk thread, starry loom, romantic legend atmosphere, celestial clouds, 3D cartoon style, adorable, high quality",
+          "props": ["silk thread", "loom", "star"],
+          "backgrounds": ["celestial clouds", "heavenly palace", "night sky"]
+        }
+      ]
+    },
+    {
+      "id": "mid-autumn",
+      "name_en": "Mid-Autumn Festival",
+      "name_zh": "中秋節",
+      "month": 9,
+      "color_palette": "orange, gold, deep blue, warm yellow",
+      "templates": [
+        {
+          "id": "midautumn-01",
+          "label": "Lantern Walk",
+          "prompt": "dingdingcat holding a bright traditional lantern, walking under a full moon, osmanthus flowers in bloom, warm festival atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["paper lantern", "osmanthus flower", "glow stick"],
+          "backgrounds": ["full moon night", "park with lanterns", "Victoria Park"]
+        },
+        {
+          "id": "midautumn-02",
+          "label": "Mooncake Feast",
+          "prompt": "dingdingcat sitting with a box of mooncakes, holding one up, tea set nearby, full moon window view, warm festival lighting, 3D cartoon style, adorable, high quality",
+          "props": ["mooncake", "tea cup", "tea pot", "pomelo"],
+          "backgrounds": ["moonlit window", "festival table", "balcony with moon"]
+        },
+        {
+          "id": "midautumn-03",
+          "label": "Jade Rabbit Friend",
+          "prompt": "dingdingcat with Chang'e's jade rabbit friend, both holding lanterns, moon palace in background, magical atmosphere, warm golden glow, 3D cartoon style, adorable, high quality",
+          "props": ["jade rabbit", "lantern", "mooncake"],
+          "backgrounds": ["moon palace", "clouds", "full moon"]
+        },
+        {
+          "id": "midautumn-04",
+          "label": "Tram Under Moon",
+          "prompt": "dingdingcat riding a tram at night, bright full moon visible through window, lanterns hanging inside tram, warm and cozy atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["lantern", "tram window", "mooncake"],
+          "backgrounds": ["tram interior", "Hong Kong night", "full moon"]
+        },
+        {
+          "id": "midautumn-05",
+          "label": "Star Shaped Lantern",
+          "prompt": "dingdingcat holding a star-shaped lantern, looking up at full moon with wonder, osmanthus petals falling, Victoria Harbour in distance, 3D cartoon style, adorable, high quality",
+          "props": ["star lantern", "osmanthus", "small mooncake"],
+          "backgrounds": ["Victoria Harbour night", "full moon sky", "festival waterfront"]
+        }
+      ]
+    },
+    {
+      "id": "national-day",
+      "name_en": "National Day",
+      "name_zh": "國慶日",
+      "month": 10,
+      "color_palette": "red, gold, yellow",
+      "templates": [
+        {
+          "id": "nationalday-01",
+          "label": "Flag Waving",
+          "prompt": "dingdingcat waving a PRC flag, wearing festive outfit, fireworks in background over Hong Kong skyline, celebration atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["national flag", "fireworks", "festive ribbon"],
+          "backgrounds": ["Hong Kong skyline", "fireworks", "celebration square"]
+        },
+        {
+          "id": "nationalday-02",
+          "label": "Golden Week Tram",
+          "prompt": "dingdingcat on a Hong Kong tram decorated for National Day, flags and ribbons, tourists waving, festive street celebration, 3D cartoon style, adorable, high quality",
+          "props": ["national flag", "tram bell", "ribbon"],
+          "backgrounds": ["festive Hong Kong street", "decorated tram"]
+        }
+      ]
+    },
+    {
+      "id": "halloween",
+      "name_en": "Halloween",
+      "name_zh": "萬聖節",
+      "month": 10,
+      "color_palette": "orange, black, purple, green",
+      "templates": [
+        {
+          "id": "halloween-01",
+          "label": "Pumpkin Cat",
+          "prompt": "dingdingcat wearing a cute witch hat, sitting next to a carved pumpkin, candy bucket nearby, spooky but cute Halloween night, 3D cartoon style, adorable, high quality",
+          "props": ["witch hat", "pumpkin", "candy bucket", "broom"],
+          "backgrounds": ["Halloween night", "spooky house", "moonlit street"]
+        },
+        {
+          "id": "halloween-02",
+          "label": "Ghost Costume",
+          "prompt": "dingdingcat wearing a cute ghost costume (white sheet with eye holes), trick-or-treating with candy bucket, friendly spooky atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["ghost costume", "candy bucket", "lantern"],
+          "backgrounds": ["neighbourhood", "pumpkin patch", "moonlit street"]
+        },
+        {
+          "id": "halloween-03",
+          "label": "Tram of Terror (Cute)",
+          "prompt": "dingdingcat on a Halloween-decorated tram with cobwebs and mini pumpkins, wearing vampire cape, full moon through tram window, 3D cartoon style, adorable, high quality",
+          "props": ["vampire cape", "mini pumpkin", "cobweb"],
+          "backgrounds": ["decorated tram", "full moon night", "Halloween street"]
+        }
+      ]
+    },
+    {
+      "id": "chung-yeung",
+      "name_en": "Chung Yeung Festival",
+      "name_zh": "重陽節",
+      "month": 11,
+      "color_palette": "chrysanthemum yellow, autumn brown, green",
+      "templates": [
+        {
+          "id": "chungyeung-01",
+          "label": "Hill Hiking",
+          "prompt": "dingdingcat hiking up a green hill with a walking stick, chrysanthemum flowers along the path, autumn clear sky, outdoor respectful mood, 3D cartoon style, adorable, high quality",
+          "props": ["walking stick", "chrysanthemum", "water bottle"],
+          "backgrounds": ["autumn hilltop", "hiking trail", "green mountain"]
+        },
+        {
+          "id": "chungyeung-02",
+          "label": "Chrysanthemum Offering",
+          "prompt": "dingdingcat holding chrysanthemum flowers, standing on a scenic hilltop overlook, autumn breeze, peaceful respectful atmosphere, 3D cartoon style, adorable, high quality",
+          "props": ["chrysanthemum bouquet", "incense", "autumn leaf"],
+          "backgrounds": ["scenic hilltop", "autumn landscape", "grave-sweeping hill"]
+        }
+      ]
+    },
+    {
+      "id": "christmas",
+      "name_en": "Christmas",
+      "name_zh": "聖誕節",
+      "month": 12,
+      "color_palette": "red, green, white, gold",
+      "templates": [
+        {
+          "id": "christmas-01",
+          "label": "Santa Hat Cat",
+          "prompt": "dingdingcat wearing a Santa hat and scarf, holding a wrapped Christmas gift, snow falling, twinkling fairy lights, 3D cartoon style, adorable, high quality",
+          "props": ["Santa hat", "gift box", "scarf", "candy cane"],
+          "backgrounds": ["snowy Christmas", "decorated room", "Christmas tree"]
+        },
+        {
+          "id": "christmas-02",
+          "label": "Christmas Tree",
+          "prompt": "dingdingcat decorating a small Christmas tree with baubles, star on top, wrapped gifts underneath, cozy winter setting, 3D cartoon style, adorable, high quality",
+          "props": ["bauble", "star topper", "gift", "tinsel"],
+          "backgrounds": ["cozy room", "Christmas setting", "fireplace"]
+        },
+        {
+          "id": "christmas-03",
+          "label": "Tram Santa",
+          "prompt": "dingdingcat dressed as Santa riding a Christmas-decorated tram, sack of gifts, snow outside tram windows, Hong Kong skyline with Christmas lights, 3D cartoon style, adorable, high quality",
+          "props": ["Santa suit", "gift sack", "bell"],
+          "backgrounds": ["decorated tram", "Hong Kong Christmas lights", "snowy harbour"]
+        },
+        {
+          "id": "christmas-04",
+          "label": "Hotpot Christmas",
+          "prompt": "dingdingcat enjoying a hotpot dinner with friends, Christmas decorations in background, warm festive atmosphere, Hong Kong winter style, 3D cartoon style, adorable, high quality",
+          "props": ["hotpot", "chopsticks", "dumpling", "meat slice"],
+          "backgrounds": ["festive dinner table", "warm home", "Christmas decorated restaurant"]
+        },
+        {
+          "id": "christmas-05",
+          "label": "Winter Solstice Dumplings",
+          "prompt": "dingdingcat making tangyuan (glutinous rice balls) for Winter Solstice, flour on nose, warm kitchen, family gathering mood, 3D cartoon style, adorable, high quality",
+          "props": ["tangyuan", "flour", "rolling pin", "bowl"],
+          "backgrounds": ["warm kitchen", "family table", "winter home"]
+        }
+      ]
+    }
+  ]
+}
