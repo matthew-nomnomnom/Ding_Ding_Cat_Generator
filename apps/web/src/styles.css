@@ -52,6 +52,11 @@ button {
   padding: 10px 16px;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .app-header nav a.active {
   background: #e56f3a;
 }
@@ -113,6 +118,18 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.form-message {
+  margin: 0;
+}
+
+.error {
+  color: #b42318;
+}
+
+.success {
+  color: #027a48;
+}
+
 .empty-state,
 .preview-box {
   align-items: center;
@@ -124,9 +141,79 @@ textarea {
   min-height: 220px;
 }
 
+.record-list {
+  display: grid;
+  gap: 14px;
+}
+
+.record-card {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #eadfcd;
+  border-radius: 20px;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 18px;
+}
+
+.record-card h3,
+.record-summary h3 {
+  margin: 0 0 8px;
+}
+
+.record-card p,
+.record-summary p {
+  color: #657085;
+  margin: 0;
+}
+
+dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+dt {
+  color: #657085;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.record-card dl {
+  grid-template-columns: repeat(2, minmax(90px, 1fr));
+}
+
+.detail-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+}
+
+.record-summary {
+  background: #fff;
+  border: 1px solid #eadfcd;
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 @media (max-width: 720px) {
   .app-header,
-  .form-grid {
+  .form-grid,
+  .detail-grid {
     display: grid;
     grid-template-columns: 1fr;
   }
@@ -138,5 +225,10 @@ textarea {
   .app-header nav a {
     text-align: center;
     width: 100%;
+  }
+
+  .record-card {
+    align-items: start;
+    display: grid;
   }
 }

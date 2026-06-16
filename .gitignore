@@ -4,5 +4,6 @@ dist/
 .DS_Store
 data/history/
 data/generated/
+apps/server/data/
 *.log
 *.tsbuildinfo

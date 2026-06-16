@@ -171,6 +171,9 @@ Default local URLs:
 
 - Web: `http://localhost:5173`
 - Server health check: `http://localhost:4000/api/health`
+- API server root: `http://localhost:4000`
+
+Open `http://localhost:5173` in the browser for the web UI. Port `4000` is the API server only.
 
 ## Scripts
 

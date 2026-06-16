@@ -32,6 +32,7 @@ export const stickerResultSchema = z.object({
 export const stickerRecordSchema = createStickerSchema.extend({
   id: z.string(),
   status: stickerStatusSchema,
+  cachePath: z.string().optional(),
   result: stickerResultSchema.optional(),
   error: z.string().optional(),
   createdAt: z.string(),
