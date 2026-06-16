@@ -35,14 +35,14 @@ export function HistoryPage() {
   return (
     <section className="panel">
       <div className="section-heading">
-        <p className="eyebrow">Local Cache</p>
+        <p className="eyebrow">Notion Database</p>
         <h2>Generation History</h2>
-        <p>Cached JSON records that have not been successfully uploaded to Notion yet.</p>
+        <p>Accepted sticker JSON records loaded from the Notion history table.</p>
       </div>
 
-      {isLoading ? <div className="empty-state">Loading cached records...</div> : null}
+      {isLoading ? <div className="empty-state">Loading history records...</div> : null}
       {error ? <div className="empty-state error">{error}</div> : null}
-      {!isLoading && !error && records.length === 0 ? <div className="empty-state">No cached sticker records yet.</div> : null}
+      {!isLoading && !error && records.length === 0 ? <div className="empty-state">No accepted sticker records yet.</div> : null}
 
       {records.length > 0 ? (
         <div className="record-list">

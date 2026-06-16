@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
+import { listDataFolderFileUrls } from "./notion.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const generatedRoot = path.join(projectRoot, "data/generated");
@@ -135,6 +136,19 @@ async function imagePathToContentPart(absolutePath: string): Promise<OpenAiConte
 }
 
 async function loadReferenceImageParts(record: StickerRecord): Promise<OpenAiContentPart[]> {
+  if (config.notionToken && config.notionDatabaseId) {
+    const baselineReferenceUrls = (await listDataFolderFileUrls("baseline")).slice(0, maxBaselineReferences);
+    const sameThemeHistoryReferenceUrls = (await listDataFolderFileUrls("generated", slugify(record.theme))).slice(
+      0,
+      maxThemeHistoryReferences,
+    );
+
+    return [...baselineReferenceUrls, ...sameThemeHistoryReferenceUrls].map((url) => ({
+      type: "image_url",
+      image_url: { url },
+    }));
+  }
+
   const themeGeneratedRoot = path.join(generatedRoot, slugify(record.theme));
   const baselineReferences = (await newestFirst(await listReferenceImagePaths(baselineRoot))).slice(0, maxBaselineReferences);
   const sameThemeHistoryReferences = (await newestFirst(await listReferenceImagePaths(themeGeneratedRoot))).slice(
@@ -152,12 +166,11 @@ async function loadSelectedImagePart(selectedImagePath?: string): Promise<OpenAi
   }
 
   const absolutePath = path.resolve(projectRoot, selectedImagePath);
-  const isGeneratedPath = absolutePath === generatedRoot || absolutePath.startsWith(`${generatedRoot}${path.sep}`);
   const isRuntimeGeneratedPath =
     absolutePath === runtimeGeneratedRoot || absolutePath.startsWith(`${runtimeGeneratedRoot}${path.sep}`);
 
-  if (!isGeneratedPath && !isRuntimeGeneratedPath) {
-    throw new Error("Selected image must be inside generated storage");
+  if (!isRuntimeGeneratedPath) {
+    throw new Error("Selected image must be inside runtime generated storage");
   }
 
   return [await imagePathToContentPart(absolutePath)];

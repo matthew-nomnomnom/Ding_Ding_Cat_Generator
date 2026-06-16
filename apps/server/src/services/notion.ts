@@ -32,6 +32,10 @@ export type DataFolderFile = {
   content: string;
   relativePath: string;
   absolutePath: string;
+  data?: Buffer;
+  textContent?: string;
+  sizeBytes?: number;
+  updatedAt?: string;
 };
 
 type NotionPageResult = {
@@ -51,12 +55,15 @@ type NotionDatabaseResponse = {
   parent?: { type?: string; page_id?: string };
 };
 
+type NotionBlockResult = {
+  id: string;
+  type?: string;
+  child_database?: { title?: string };
+  code?: { rich_text?: Array<{ plain_text?: string }> };
+};
+
 type NotionBlockChildrenResponse = {
-  results?: Array<{
-    id: string;
-    type?: string;
-    child_database?: { title?: string };
-  }>;
+  results?: NotionBlockResult[];
   has_more?: boolean;
   next_cursor?: string | null;
 };
@@ -65,6 +72,14 @@ type NotionFileUploadResponse = {
   id: string;
   upload_url?: string;
   status?: string;
+};
+
+type NotionFileProperty = {
+  files?: Array<{
+    type?: string;
+    file?: { url?: string };
+    external?: { url?: string };
+  }>;
 };
 
 const resolvedDataDatabaseIds = new Map<DataFolderGroup, string>();
@@ -241,7 +256,7 @@ export async function getDataGroupDatabaseId(group: DataFolderGroup): Promise<st
 }
 
 async function buildDataFileProperties(file: DataFolderFile, uploadedFileId?: string) {
-  const stats = await stat(file.absolutePath);
+  const stats = file.data ? undefined : await stat(file.absolutePath);
   const extension = path.extname(file.relativePath).replace(/^\./, "");
   const fileType = extension === "json" ? "json" : isImageFile(file.relativePath) ? "image" : "file";
 
@@ -255,8 +270,8 @@ async function buildDataFileProperties(file: DataFolderFile, uploadedFileId?: st
     File: uploadedFileId
       ? { files: [{ name: path.basename(file.relativePath), type: "file_upload", file_upload: { id: uploadedFileId } }] }
       : { files: [] },
-    "Size Bytes": number(stats.size),
-    "Updated At": date(stats.mtime.toISOString()),
+    "Size Bytes": number(file.sizeBytes ?? stats?.size),
+    "Updated At": date(file.updatedAt ?? stats?.mtime.toISOString()),
   };
 }
 
@@ -279,6 +294,19 @@ function getRichTextProperty(page: NotionPageResult, propertyName: string): stri
   const property = page.properties?.[propertyName] as { rich_text?: Array<{ plain_text?: string }> } | undefined;
 
   return property?.rich_text?.[0]?.plain_text;
+}
+
+function getTitleProperty(page: NotionPageResult, propertyName: string): string | undefined {
+  const property = page.properties?.[propertyName] as { title?: Array<{ plain_text?: string }> } | undefined;
+
+  return property?.title?.[0]?.plain_text;
+}
+
+function getFilePropertyUrl(page: NotionPageResult, propertyName: string): string | undefined {
+  const property = page.properties?.[propertyName] as NotionFileProperty | undefined;
+  const file = property?.files?.[0];
+
+  return file?.file?.url ?? file?.external?.url;
 }
 
 async function listDatabasePages(databaseId: string): Promise<NotionPageResult[]> {
@@ -333,7 +361,7 @@ async function uploadFileToNotion(file: DataFolderFile): Promise<string> {
     }),
   }, notionFileUploadVersion);
   const formData = new FormData();
-  const raw = await readFile(file.absolutePath);
+  const raw = file.data ?? (await readFile(file.absolutePath));
 
   formData.append("file", new Blob([raw], { type: getMimeType(file.absolutePath) }), path.basename(file.absolutePath));
 
@@ -394,8 +422,10 @@ async function appendPageContent(pageId: string, file: DataFolderFile, uploadedF
   const children = getPageChildren(file, uploadedFileId) as Array<Record<string, any>>;
 
   if (path.extname(file.relativePath).toLowerCase() === ".json") {
-    const rawJson = await readFile(file.absolutePath, "utf8");
-    children[0].code.rich_text = [{ type: "text", text: { content: rawJson.slice(0, 1900) } }];
+    const rawJson = file.textContent ?? (await readFile(file.absolutePath, "utf8"));
+    children[0].code.rich_text = rawJson.match(/[\s\S]{1,1900}/g)?.map((content) => ({ type: "text", text: { content } })) ?? [
+      { type: "text", text: { content: "" } },
+    ];
   }
 
   if (children.length === 0) {
@@ -474,6 +504,89 @@ export async function uploadDataFolderFile(file: DataFolderFile): Promise<string
   return page.id;
 }
 
+export async function listDataFolderRows(group: DataFolderGroup): Promise<NotionPageResult[]> {
+  const databaseId = await getDataGroupDatabaseId(group);
+
+  if (!databaseId) {
+    return [];
+  }
+
+  return listDatabasePages(databaseId);
+}
+
+export async function listDataFolderFileUrls(group: DataFolderGroup, category?: string): Promise<string[]> {
+  const pages = await listDataFolderRows(group);
+
+  return pages
+    .filter((page) => !category || getRichTextProperty(page, "Category") === category)
+    .map((page) => getFilePropertyUrl(page, "File"))
+    .filter((url): url is string => Boolean(url));
+}
+
+async function getPageCodeContent(pageId: string): Promise<string | undefined> {
+  let cursor: string | undefined;
+  let content = "";
+
+  while (true) {
+    const query = cursor ? `?start_cursor=${encodeURIComponent(cursor)}` : "";
+    const response = await notionRequest<NotionBlockChildrenResponse>(`/blocks/${pageId}/children${query}`);
+
+    for (const block of response.results ?? []) {
+      if (block.type === "code") {
+        content += block.code?.rich_text?.map((part) => part.plain_text ?? "").join("") ?? "";
+      }
+    }
+
+    if (!response.has_more || !response.next_cursor) {
+      return content || undefined;
+    }
+
+    cursor = response.next_cursor;
+  }
+}
+
+export async function listNotionHistoryRecords(): Promise<StickerRecord[]> {
+  const pages = await listDataFolderRows("history");
+  const records = await Promise.all(
+    pages.map(async (page) => {
+      const json = await getPageCodeContent(page.id);
+
+      if (!json) {
+        return undefined;
+      }
+
+      return JSON.parse(json) as StickerRecord;
+    }),
+  );
+
+  return records.filter((record): record is StickerRecord => Boolean(record));
+}
+
+export async function getAvailableNotionContentName(
+  group: DataFolderGroup,
+  category: string,
+  baseName: string,
+  extension: string,
+): Promise<string> {
+  const pages = await listDataFolderRows(group);
+  const usedNames = new Set(
+    pages
+      .filter((page) => getRichTextProperty(page, "Category") === category)
+      .map((page) => path.parse(getTitleProperty(page, "Name") ?? "").name),
+  );
+  let index = 0;
+
+  while (true) {
+    const candidateName = index === 0 ? baseName : `${baseName}_${index}`;
+
+    if (!usedNames.has(candidateName)) {
+      return `${candidateName}${extension}`;
+    }
+
+    index += 1;
+  }
+}
+
 function dataFileFromRelativePath(relativePath: string): DataFolderFile | undefined {
   const [dataRoot, group, category, ...rest] = relativePath.split(path.sep);
 
@@ -504,4 +617,41 @@ export async function uploadFinalStickerJson(record: StickerRecord): Promise<str
   }
 
   return pageIds[0] ?? "notion-not-configured";
+}
+
+export async function uploadAcceptedStickerRecord(record: StickerRecord, sourceAbsolutePath: string): Promise<string> {
+  if (!record.result?.localPath || !record.cachePath) {
+    throw new Error("Accepted sticker record must include localPath and cachePath before Notion upload");
+  }
+
+  const imageBuffer = await readFile(sourceAbsolutePath);
+  const imagePageId = await uploadDataFolderFile({
+    group: "generated",
+    category: record.theme,
+    content: path.basename(record.result.localPath),
+    relativePath: record.result.localPath,
+    absolutePath: sourceAbsolutePath,
+    data: imageBuffer,
+    sizeBytes: imageBuffer.byteLength,
+    updatedAt: record.updatedAt,
+  });
+  const recordWithNotionPageId = {
+    ...record,
+    result: record.result ? { ...record.result, notionPageId: imagePageId } : record.result,
+  };
+  const jsonContent = `${JSON.stringify(recordWithNotionPageId, null, 2)}\n`;
+
+  await uploadDataFolderFile({
+    group: "history",
+    category: record.theme,
+    content: path.basename(record.cachePath),
+    relativePath: record.cachePath,
+    absolutePath: record.cachePath,
+    data: Buffer.from(jsonContent, "utf8"),
+    textContent: jsonContent,
+    sizeBytes: Buffer.byteLength(jsonContent),
+    updatedAt: record.updatedAt,
+  });
+
+  return imagePageId;
 }

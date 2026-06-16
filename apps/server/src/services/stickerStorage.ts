@@ -3,10 +3,17 @@ import { randomUUID } from "node:crypto";
 import { access, mkdir, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { config } from "../config.js";
+import { listNotionHistoryRecords } from "./notion.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const historyRoot = path.join(projectRoot, "data/history");
 const runtimeRecords = new Map<string, StickerRecord>();
+const isRunningNodeTest = process.argv.some((argument) => argument.includes("--test")) || process.env.npm_lifecycle_event === "test";
+
+function shouldUseNotionStorage(): boolean {
+  return Boolean(config.notionToken && config.notionDatabaseId && !isRunningNodeTest);
+}
 
 function slugify(value: string): string {
   return value
@@ -100,6 +107,12 @@ async function removeEmptyParentDirectories(startDirectory: string): Promise<voi
 }
 
 export async function listStickerRecords(): Promise<StickerRecord[]> {
+  if (shouldUseNotionStorage()) {
+    const records = await listNotionHistoryRecords();
+
+    return [...runtimeRecords.values(), ...records].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
   const filePaths = await listRequestJsonFiles(historyRoot);
   const records = await Promise.all(filePaths.map(readRecordFile));
 
@@ -146,11 +159,16 @@ export async function updateStickerRecord(
   const updated = {
     ...existing,
     ...patch,
-    cachePath: existing.cachePath,
+    cachePath: patch.cachePath ?? existing.cachePath,
     updatedAt: new Date().toISOString(),
   };
 
   if (updated.cachePath) {
+    if (shouldUseNotionStorage()) {
+      runtimeRecords.set(id, updated);
+      return updated;
+    }
+
     await writeFile(getStoredRecordPath(updated), `${JSON.stringify(updated, null, 2)}\n`, "utf8");
   } else {
     runtimeRecords.set(id, updated);
@@ -174,6 +192,12 @@ export async function persistStickerRecord(id: string): Promise<StickerRecord> {
     cachePath: path.relative(projectRoot, recordPath),
     updatedAt: new Date().toISOString(),
   };
+
+  if (shouldUseNotionStorage()) {
+    runtimeRecords.delete(id);
+    return persisted;
+  }
+
   const recordDirectory = path.dirname(recordPath);
 
   await mkdir(recordDirectory, { recursive: true });
@@ -188,7 +212,7 @@ export async function deleteStickerCache(id: string): Promise<void> {
 
   runtimeRecords.delete(id);
 
-  if (!record) {
+  if (!record || shouldUseNotionStorage()) {
     return;
   }
 

@@ -1,23 +1,20 @@
 import { createStickerSchema } from "@sticker-platform/shared";
 import { Router } from "express";
-import { copyFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { generateSticker } from "../services/nanoBanana.js";
-import { uploadFinalStickerJson } from "../services/notion.js";
+import { getAvailableNotionContentName, uploadAcceptedStickerRecord } from "../services/notion.js";
 import {
   createStickerRecord,
   deleteStickerCache,
   getStickerRecord,
   listStickerRecords,
-  persistStickerRecord,
   updateStickerRecord,
 } from "../services/stickerStorage.js";
 
 export const stickersRouter = Router();
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
-const generatedRoot = path.join(projectRoot, "data/generated");
 const runtimeGeneratedRoot = path.join(projectRoot, ".runtime/generated");
 
 const refineStickerSchema = z.object({
@@ -31,12 +28,11 @@ const acceptStickerSchema = z.object({
 
 function assertGeneratedPath(relativePath: string): string {
   const absolutePath = path.resolve(projectRoot, relativePath);
-  const isGeneratedPath = absolutePath === generatedRoot || absolutePath.startsWith(`${generatedRoot}${path.sep}`);
   const isRuntimeGeneratedPath =
     absolutePath === runtimeGeneratedRoot || absolutePath.startsWith(`${runtimeGeneratedRoot}${path.sep}`);
 
-  if (!isGeneratedPath && !isRuntimeGeneratedPath) {
-    throw Object.assign(new Error("Selected image must be inside generated storage"), { statusCode: 400 });
+  if (!isRuntimeGeneratedPath) {
+    throw Object.assign(new Error("Selected image must be inside runtime generated storage"), { statusCode: 400 });
   }
 
   return absolutePath;
@@ -50,7 +46,7 @@ function slugify(value: string): string {
     .replace(/^_+|_+$/g, "") || "untitled";
 }
 
-async function copySelectedToFinal(record: Awaited<ReturnType<typeof getStickerRecord>>, selectedPath?: string) {
+async function getAcceptedStickerPaths(record: Awaited<ReturnType<typeof getStickerRecord>>, selectedPath?: string) {
   if (!record) {
     throw new Error("Sticker record not found");
   }
@@ -62,30 +58,16 @@ async function copySelectedToFinal(record: Awaited<ReturnType<typeof getStickerR
   }
 
   const sourceAbsolutePath = assertGeneratedPath(sourcePath);
+  const theme = slugify(record.theme);
   const extension = path.extname(sourceAbsolutePath) || ".png";
-  const finalDirectory = path.join(generatedRoot, slugify(record.theme));
-  const finalAbsolutePath = await getAvailableGeneratedImagePath(finalDirectory, slugify(record.description), extension);
+  const contentName = await getAvailableNotionContentName("generated", theme, slugify(record.description), extension);
+  const motionName = path.parse(contentName).name;
 
-  await mkdir(finalDirectory, { recursive: true });
-  await copyFile(sourceAbsolutePath, finalAbsolutePath);
-
-  return path.relative(projectRoot, finalAbsolutePath);
-}
-
-async function getAvailableGeneratedImagePath(directory: string, baseName: string, extension: string): Promise<string> {
-  const entries = await readdir(directory).catch(() => []);
-  const usedNames = new Set(entries.map((entry) => path.parse(entry).name));
-  let index = 0;
-
-  while (true) {
-    const candidateName = index === 0 ? baseName : `${baseName}_${index}`;
-
-    if (!usedNames.has(candidateName)) {
-      return path.join(directory, `${candidateName}${extension}`);
-    }
-
-    index += 1;
-  }
+  return {
+    sourceAbsolutePath,
+    finalPath: `data/generated/${theme}/${contentName}`,
+    cachePath: `data/history/${theme}/${motionName}.json`,
+  };
 }
 
 stickersRouter.get("/", async (_req, res, next) => {
@@ -184,21 +166,21 @@ stickersRouter.post("/:id/accept", async (req, res, next) => {
       return;
     }
 
-    const finalPath = await copySelectedToFinal(record, input.selectedPath);
+    const { sourceAbsolutePath, finalPath, cachePath } = await getAcceptedStickerPaths(record, input.selectedPath);
     const accepted = await updateStickerRecord(record.id, {
       status: "uploading",
+      cachePath,
       result: record.result
         ? { ...record.result, localPath: finalPath, fileUrl: `/${finalPath.replace(/^data\//, "")}`, selectedPath: finalPath }
         : { provider: "nano-banana-2", format: record.format, localPath: finalPath, fileUrl: `/${finalPath.replace(/^data\//, "")}`, selectedPath: finalPath },
     });
-    const persistedAccepted = await persistStickerRecord(accepted.id);
-    const notionPageId = await uploadFinalStickerJson(persistedAccepted);
-    const uploaded = await updateStickerRecord(persistedAccepted.id, {
+    const notionPageId = await uploadAcceptedStickerRecord(accepted, sourceAbsolutePath);
+    const uploaded = await updateStickerRecord(accepted.id, {
       status: "uploaded",
-      result: persistedAccepted.result
-        ? { ...persistedAccepted.result, notionPageId }
-        : { provider: "nano-banana-2", format: persistedAccepted.format, notionPageId },
+      result: accepted.result ? { ...accepted.result, notionPageId } : { provider: "nano-banana-2", format: accepted.format, notionPageId },
     });
+
+    await deleteStickerCache(uploaded.id);
 
     res.json({ uploaded: true, notionPageId, record: uploaded });
   } catch (error) {
