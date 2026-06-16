@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ZodError } from "zod";
 import { config } from "./config.js";
+import { notionRouter } from "./routes/notion.js";
 import { stickersRouter } from "./routes/stickers.js";
 
 const app = express();
@@ -35,6 +36,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/stickers", stickersRouter);
+app.use("/api/notion", notionRouter);
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof ZodError) {
@@ -52,4 +54,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 app.listen(config.port, () => {
   console.log(`Sticker server listening on http://localhost:${config.port}`);
   console.log(`Nano Banana generation: ${config.nanoBananaApiKey ? "configured" : "not configured, using placeholder"}`);
+  console.log(`Notion sync: ${config.notionToken && config.notionDatabaseId ? "configured" : "not configured"}`);
 });

@@ -122,8 +122,7 @@ data/
       <motion_name>_2.png
   history/
     <theme_key>/
-      <motion_name>/
-        request.json
+      <motion_name>.json
 
 .runtime/
   generated/
@@ -247,22 +246,33 @@ Current behavior:
 - Duplicate `theme + description` cache paths are rejected to avoid overwriting existing JSON.
 - `POST /api/stickers/:id/generate` creates five runtime-only candidates and updates the draft record with `result.candidates`.
 - `POST /api/stickers/:id/refine` sends the selected candidate and fine-tune requirement back to Nano Banana 2, then returns five refined candidates.
-- `POST /api/stickers/:id/accept` copies the selected candidate to `data/generated/<theme>/<motion>.*`, writes `data/history/<theme>/<description>/request.json`, updates `result.fileUrl`, and returns a placeholder Notion page ID.
+- `POST /api/stickers/:id/accept` copies the selected candidate to `data/generated/<theme>/<motion>.*`, writes `data/history/<theme>/<motion>.json`, updates `result.fileUrl`, and returns the Notion page ID.
 
 ## Notion Strategy
 
-Notion should receive only accepted final records. Drafts, failed attempts, rejected generations, and temporary cache files should remain local.
+Notion mirrors the local `data/` folder as three separate child databases under the configured Notion page: `baseline`, `generated`, and `history`. Each row is one actual local file from the matching folder. Drafts, failed attempts, rejected generations, and temporary candidate files under `.runtime/` remain local.
 
-Recommended Notion fields:
+Set `NOTION_TOKEN` and `NOTION_DATABASE_ID` in `.env`. `NOTION_DATABASE_ID` can be either an existing database id or the id of a blank Notion page. If it is a blank page id, the server creates a `Sticker Generation History` database inside that page and logs the new database id; put that new id back into `.env` for future syncs.
 
-- `Format`
-- `Theme`
-- `Description`
-- `Status`
-- `Provider`
-- `Local Path` or hosted asset URL
-- `Final JSON`
-- `Created At`
+To import the current local `data/` folder into those three cloud databases, run the server and call:
+
+```bash
+curl -X POST http://localhost:4000/api/notion/import
+```
+
+Each table import is keyed by `Relative Path`, so rerunning it updates existing Notion rows instead of creating duplicate rows. Image files are uploaded to Notion and attached to the row page, so opening the row shows the actual image. JSON files are written into the row page as a JSON code block.
+
+Each table has the same fields:
+
+- `Name`
+- `Group`: `baseline`, `generated`, or `history`
+- `Category`: the first folder under the group, for example `lunar_new_year`
+- `Content`: the actual file path under the category
+- `File Type`: `image` or `json`
+- `Extension`
+- `Relative Path`
+- `File URL`: populated for generated images
+- `Size Bytes`
 - `Updated At`
 
 ## Cache Cleanup Policy

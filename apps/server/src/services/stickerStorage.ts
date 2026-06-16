@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const historyRoot = path.join(projectRoot, "data/history");
-const recordFileName = "request.json";
 const runtimeRecords = new Map<string, StickerRecord>();
 
 function slugify(value: string): string {
@@ -18,11 +17,11 @@ function slugify(value: string): string {
 }
 
 function getRecordDirectory(record: Pick<StickerRecord, "theme" | "description">): string {
-  return path.join(historyRoot, slugify(record.theme), slugify(record.description));
+  return path.join(historyRoot, slugify(record.theme));
 }
 
 function getRecordPath(record: Pick<StickerRecord, "theme" | "description">): string {
-  return path.join(getRecordDirectory(record), recordFileName);
+  return path.join(getRecordDirectory(record), `${slugify(record.description)}.json`);
 }
 
 function getStoredRecordPath(record: Pick<StickerRecord, "theme" | "description" | "cachePath">): string {
@@ -47,7 +46,7 @@ async function getAvailableRecordPath(record: Pick<StickerRecord, "theme" | "des
 
   while (true) {
     const candidateName = index === 0 ? baseName : `${baseName}_${index}`;
-    const candidatePath = path.join(themeDirectory, candidateName, recordFileName);
+    const candidatePath = path.join(themeDirectory, `${candidateName}.json`);
 
     if (!(await pathExists(candidatePath))) {
       return candidatePath;
@@ -65,7 +64,7 @@ function getRecordPathForFinalImage(record: StickerRecord): string | undefined {
   const relativeFinalPath = path.relative(path.join(projectRoot, "data/generated"), path.join(projectRoot, record.result.localPath));
   const parsedFinalPath = path.parse(relativeFinalPath);
 
-  return path.join(historyRoot, parsedFinalPath.dir, parsedFinalPath.name, recordFileName);
+  return path.join(historyRoot, parsedFinalPath.dir, `${parsedFinalPath.name}.json`);
 }
 
 async function listRequestJsonFiles(directory: string): Promise<string[]> {
@@ -78,7 +77,7 @@ async function listRequestJsonFiles(directory: string): Promise<string[]> {
         return listRequestJsonFiles(entryPath);
       }
 
-      return entry.isFile() && entry.name === recordFileName ? [entryPath] : [];
+      return entry.isFile() && path.extname(entry.name) === ".json" ? [entryPath] : [];
     }),
   );
 

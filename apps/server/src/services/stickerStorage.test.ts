@@ -40,7 +40,7 @@ describe("stickerStorage", () => {
     assert.equal(record.status, "pending");
     assert.equal(record.cachePath, undefined);
 
-    const expectedCachePath = `data/history/test_theme_${slugify(suffix)}/storage_lifecycle_test/request.json`;
+    const expectedCachePath = `data/history/test_theme_${slugify(suffix)}/storage_lifecycle_test.json`;
     const absoluteCachePath = path.join(projectRoot, expectedCachePath);
     assert.equal(await exists(absoluteCachePath), false);
 
@@ -57,7 +57,7 @@ describe("stickerStorage", () => {
     await deleteStickerCache(record.id);
 
     assert.equal(await getStickerRecord(record.id), undefined);
-    assert.equal(await exists(path.dirname(path.dirname(absoluteCachePath))), false);
+    assert.equal(await exists(path.dirname(absoluteCachePath)), false);
   });
 
   test("allows duplicate motions and persists them with indexed cache paths", async () => {
@@ -73,8 +73,8 @@ describe("stickerStorage", () => {
     const firstPersisted = await persistStickerRecord(first.id);
     const secondPersisted = await persistStickerRecord(second.id);
 
-    assert.equal(firstPersisted.cachePath, `data/history/duplicate_${slugify(suffix)}/duplicate_test/request.json`);
-    assert.equal(secondPersisted.cachePath, `data/history/duplicate_${slugify(suffix)}/duplicate_test_1/request.json`);
+    assert.equal(firstPersisted.cachePath, `data/history/duplicate_${slugify(suffix)}/duplicate_test.json`);
+    assert.equal(secondPersisted.cachePath, `data/history/duplicate_${slugify(suffix)}/duplicate_test_1.json`);
 
     await deleteStickerCache(first.id);
     await deleteStickerCache(second.id);
@@ -96,7 +96,7 @@ describe("stickerStorage", () => {
     });
     const persisted = await persistStickerRecord(updated.id);
 
-    assert.equal(persisted.cachePath, `data/history/history_${slugify(suffix)}/dance_2/request.json`);
+    assert.equal(persisted.cachePath, `data/history/history_${slugify(suffix)}/dance_2.json`);
 
     await deleteStickerCache(record.id);
   });
