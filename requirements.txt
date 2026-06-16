@@ -1,8 +1,8 @@
-# AI image generation
+# AI image generation (Replicate)
 replicate>=1.0.0
 
-# LLM prompt refinement (Gemini)
-google-generativeai>=0.8.0
+# LLM prompt refinement (Vercel AI Gateway → Gemini via OpenAI SDK)
+openai>=2.0.0
 
 # Desktop UI framework
 nicegui>=2.0.0

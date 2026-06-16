@@ -34,19 +34,16 @@ assets/lora/*.safetensors
 assets/lora/*.ckpt
 assets/lora/*.pt
 
-# Reference / training images
-assets/training_images/*.png
-assets/training_images/*.jpg
-assets/training_images/*.jpeg
-assets/training_images/*.webp
+# Training / reference images (all subdirs)
+assets/training_images/
+assets/reference_images/
 
-# Generated output
+# Generated output and data
 output/
-stickers/
+data/
 *.webp
 *.zip
-data/history/
-data/generated/
+stickers/
 
 # OS files
 .DS_Store

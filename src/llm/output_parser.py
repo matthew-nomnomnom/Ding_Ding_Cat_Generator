@@ -26,7 +26,13 @@ def parse_llm_output(raw_response: str) -> RefinementResult:
 
     result = _try_parse_json(text)
     if result is None:
+        # Strip leading "json" word before trying again
+        cleaned = re.sub(r"^(?:json\s*)+", "", text, count=1, flags=re.IGNORECASE).strip()
+        result = _try_parse_json(cleaned)
+    if result is None:
         result = _try_parse_markdown_json(text)
+    if result is None:
+        result = _try_extract_any_json(text)
     if result is None:
         result = _try_fallback_text(text)
 
@@ -84,27 +90,58 @@ def _try_parse_markdown_json(text: str) -> RefinementResult | None:
     return None
 
 
+def _try_extract_any_json(text: str) -> RefinementResult | None:
+    # Find all { ... } blocks and try each as JSON
+    depth = 0
+    start = -1
+    for i, ch in enumerate(text):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start >= 0:
+                candidate = text[start : i + 1]
+                result = _try_parse_json(candidate)
+                if result is not None:
+                    return result
+                start = -1
+    return None
+
+
 def _try_fallback_text(text: str) -> RefinementResult:
     cleaned = _strip_markdown(text)
     negative = DEFAULT_NEGATIVE
 
-    neg_match = re.search(
-        r'"negative_prompt"\s*:\s*"([^"]+)"', text, re.IGNORECASE
-    )
-    if neg_match:
-        negative = neg_match.group(1)
-
+    # Try regex extraction of fields from raw JSON-like text before full fallback
     prompt_match = re.search(
-        r'"prompt"\s*:\s*"([^"]+)"', text, re.IGNORECASE
+        r'"prompt"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.IGNORECASE
     )
     if prompt_match:
-        cleaned = prompt_match.group(1)
+        cleaned = _unescape_json_string(prompt_match.group(1))
+
+    neg_match = re.search(
+        r'"negative_prompt"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.IGNORECASE
+    )
+    if neg_match:
+        negative = _unescape_json_string(neg_match.group(1))
+
+    props_match = re.search(
+        r'"suggested_props"\s*:\s*\[(.*?)\]', text, re.IGNORECASE | re.DOTALL
+    )
+    suggested_props = _extract_props(props_match.group(1)) if props_match else []
+
+    bg_match = re.search(
+        r'"suggested_background"\s*:\s*"((?:[^"\\]|\\.)*)"', text, re.IGNORECASE
+    )
+    suggested_background = _unescape_json_string(bg_match.group(1)) if bg_match else ""
 
     return RefinementResult(
         prompt=cleaned,
         negative_prompt=negative,
-        suggested_props=[],
-        suggested_background="",
+        suggested_props=suggested_props,
+        suggested_background=suggested_background,
     )
 
 
@@ -117,6 +154,20 @@ def _strip_markdown(text: str) -> str:
     text = text.replace("`", "")
     text = text.replace("**", "")
     return text.strip()
+
+
+def _unescape_json_string(s: str) -> str:
+    # Handle common JSON escape sequences in a regex-extracted string
+    s = s.replace('\\"', '"')
+    s = s.replace("\\n", "\n")
+    s = s.replace("\\t", "\t")
+    s = s.replace("\\\\", "\\")
+    return s
+
+
+def _extract_props(text: str) -> list[str]:
+    items = re.findall(r'"((?:[^"\\]|\\.)*)"', text)
+    return [_unescape_json_string(item) for item in items]
 
 
 def _dict_to_result(data: dict) -> RefinementResult:

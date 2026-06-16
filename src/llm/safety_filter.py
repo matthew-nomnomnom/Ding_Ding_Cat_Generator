@@ -109,7 +109,7 @@ def check_with_classifier(
     try:
         response = gemini_client.generate(classifier_prompt, temperature=0.0)
         import json as _json
-        data = _json.loads(response)
+        data = _parse_classifier_response(response)
         if data.get("safe") is False:
             return SafetyCheckResult(
                 is_safe=False,
@@ -147,3 +147,47 @@ def full_safety_check(
             return result
 
     return SafetyCheckResult(is_safe=True, layer="both")
+
+
+def _parse_classifier_response(response: str) -> dict:
+    import json as _json
+    import re
+
+    response = response.strip()
+    try:
+        return _json.loads(response)
+    except _json.JSONDecodeError:
+        pass
+
+    # Try to extract JSON from markdown code blocks
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)```", response)
+    if match:
+        try:
+            return _json.loads(match.group(1).strip())
+        except _json.JSONDecodeError:
+            pass
+
+    # Try to find { ... } block
+    match = re.search(r"\{[\s\S]*\}", response)
+    if match:
+        try:
+            return _json.loads(match.group(0))
+        except _json.JSONDecodeError:
+            pass
+
+    # Simple keyword fallback: if "safe" appears near "true" or "false"
+    safe_match = re.search(r'"safe"\s*:\s*(true|false)', response, re.IGNORECASE)
+    reason_match = re.search(r'"reason"\s*:\s*"([^"]*)"', response)
+    if safe_match:
+        return {
+            "safe": safe_match.group(1).lower() == "true",
+            "reason": reason_match.group(1) if reason_match else "unknown",
+        }
+
+    # Default: assume unsafe content mentions are present
+    unsafe_signals = ["unsafe", "blocked", "inappropriate", "not safe"]
+    for signal in unsafe_signals:
+        if signal in response.lower():
+            return {"safe": False, "reason": f"Classifier indicated: {signal}"}
+
+    return {"safe": True, "reason": "Classifier response could not be parsed, defaulting to safe"}
