@@ -39,14 +39,14 @@ export function getSticker(id: string): Promise<StickerRecord> {
 }
 
 type SSEServerEvent =
-  | { type: "progress"; current: number; total: number; candidate: string }
+  | { type: "progress"; current: number; total: number; candidate: string; preview?: string }
   | { type: "done"; record: StickerRecord }
   | { type: "error"; message: string };
 
 async function streamRequest<T>(
   path: string,
   options: RequestInit,
-  onProgress: (current: number, total: number) => void,
+  onProgress: (current: number, total: number, candidate: string, preview?: string) => void,
 ): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -80,7 +80,7 @@ async function streamRequest<T>(
       if (!line.startsWith("data: ")) continue;
       const event = JSON.parse(line.slice(6)) as SSEServerEvent;
       if (event.type === "progress") {
-        onProgress(event.current, event.total);
+        onProgress(event.current, event.total, event.candidate, event.preview);
       } else if (event.type === "done") {
         return event.record as T;
       } else if (event.type === "error") {
@@ -92,21 +92,41 @@ async function streamRequest<T>(
 
 export function generateSticker(
   id: string,
-  onProgress: (current: number, total: number) => void,
+  onProgress: (current: number, total: number, candidate: string, preview?: string) => void,
+  fallbackInput?: { theme: string; description: string },
 ): Promise<StickerRecord> {
-  return streamRequest<StickerRecord>(`/api/stickers/${id}/generate`, { method: "POST" }, onProgress);
+  return streamRequest<StickerRecord>(`/api/stickers/${id}/generate`, {
+    method: "POST",
+    body: fallbackInput ? JSON.stringify(fallbackInput) : undefined,
+  }, onProgress).catch(async (error) => {
+    const record = await getSticker(id);
+
+    if (record.status === "generated" && record.result?.candidates?.length) {
+      return record;
+    }
+
+    throw error;
+  });
 }
 
 export function refineSticker(
   id: string,
   input: { selectedPath: string; requirement: string },
-  onProgress: (current: number, total: number) => void,
+  onProgress: (current: number, total: number, candidate: string, preview?: string) => void,
 ): Promise<StickerRecord> {
   return streamRequest<StickerRecord>(
     `/api/stickers/${id}/refine`,
     { body: JSON.stringify(input), method: "POST" },
     onProgress,
-  );
+  ).catch(async (error) => {
+    const record = await getSticker(id);
+
+    if (record.status === "generated" && record.result?.candidates?.length) {
+      return record;
+    }
+
+    throw error;
+  });
 }
 
 export function rejectSticker(id: string, input?: { reason?: string }): Promise<{ rejected: true; notionPageId: string }> {
@@ -116,7 +136,7 @@ export function rejectSticker(id: string, input?: { reason?: string }): Promise<
   });
 }
 
-export function acceptSticker(id: string, input?: { selectedPath?: string }): Promise<{ uploaded: true; notionPageId: string }> {
+export function acceptSticker(id: string, input?: { selectedPath?: string; imageData?: string }): Promise<{ uploaded: true; notionPageId: string }> {
   return request<{ uploaded: true; notionPageId: string }>(`/api/stickers/${id}/accept`, {
     body: JSON.stringify(input ?? {}),
     method: "POST",

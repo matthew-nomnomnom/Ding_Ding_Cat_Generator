@@ -4,10 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
 import { listDataFolderFileUrls } from "./notion.js";
+import { uploadRuntimeCandidateBlob } from "./runtimeBlob.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const generatedRoot = path.join(projectRoot, "data/generated");
-const runtimeGeneratedRoot = path.join(projectRoot, ".runtime/generated");
+const runtimeGeneratedRoot = config.runtimeGeneratedRoot;
 const baselineRoot = path.join(projectRoot, "data/baseline");
 const maxBaselineReferences = 8;
 const maxThemeHistoryReferences = 8;
@@ -28,8 +29,9 @@ type ImageResponse = {
 type GenerateOptions = {
   count?: number;
   selectedImagePath?: string;
+  selectedImageUrl?: string;
   refinementRequirement?: string;
-  onProgress?: (current: number, total: number, candidatePath: string) => void;
+  onProgress?: (current: number, total: number, candidatePath: string, previewDataUrl: string) => void;
 };
 
 function slugify(value: string): string {
@@ -65,6 +67,7 @@ function buildPlaceholderSvg(record: StickerRecord): string {
 </svg>
 `;
 }
+
 
 function buildGenerationPrompt(record: StickerRecord, options: GenerateOptions = {}, variationIndex?: number): string {
   const refinementBlock = options.refinementRequirement
@@ -161,12 +164,18 @@ async function loadReferenceImageParts(record: StickerRecord): Promise<OpenAiCon
   return Promise.all(references.map(imagePathToContentPart));
 }
 
-async function loadSelectedImagePart(selectedImagePath?: string): Promise<OpenAiContentPart[]> {
+async function loadSelectedImagePart(selectedImagePath?: string, selectedImageUrl?: string): Promise<OpenAiContentPart[]> {
+  if (selectedImageUrl) {
+    return [{ type: "image_url", image_url: { url: selectedImageUrl } }];
+  }
+
   if (!selectedImagePath) {
     return [];
   }
 
-  const absolutePath = path.resolve(projectRoot, selectedImagePath);
+  const absolutePath = selectedImagePath.startsWith(".runtime/generated/")
+    ? path.resolve(runtimeGeneratedRoot, path.relative(".runtime/generated", selectedImagePath))
+    : path.resolve(projectRoot, selectedImagePath);
   const isRuntimeGeneratedPath =
     absolutePath === runtimeGeneratedRoot || absolutePath.startsWith(`${runtimeGeneratedRoot}${path.sep}`);
 
@@ -209,7 +218,7 @@ async function generateWithNanoBanana(
 
   const content: OpenAiContentPart[] = [
     ...(await loadReferenceImageParts(record)),
-    ...(await loadSelectedImagePart(options.selectedImagePath)),
+    ...(await loadSelectedImagePart(options.selectedImagePath, options.selectedImageUrl)),
     { type: "text", text: buildGenerationPrompt(record, options, variationIndex) },
   ];
 
@@ -251,6 +260,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
   await mkdir(trialDirectory, { recursive: true });
 
   const candidates: string[] = [];
+  const candidateUrls: Record<string, string> = {};
 
   for (let index = 1; index <= count; index += 1) {
     const fileName = config.nanoBananaApiKey
@@ -268,14 +278,23 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
       await writeFile(absolutePath, buildPlaceholderSvg(record), "utf8");
     }
 
-    candidates.push(path.relative(projectRoot, absolutePath).replace(/\\/g, "/"));
-    options.onProgress?.(index, count, candidates[candidates.length - 1]);
+    const candidatePath = path.join(".runtime/generated", path.relative(runtimeGeneratedRoot, absolutePath)).replace(/\\/g, "/");
+    candidates.push(candidatePath);
+    const blobPathname = await uploadRuntimeCandidateBlob(record.id, candidatePath, absolutePath);
+    const mime = `image/${path.extname(absolutePath).toLowerCase() === ".svg" ? "svg+xml" : "png"}`;
+    const raw = await readFile(absolutePath);
+    const preview = `data:${mime};base64,${raw.toString("base64")}`;
+    if (blobPathname) {
+      candidateUrls[candidatePath] = blobPathname;
+    }
+    options.onProgress?.(index, count, candidatePath, preview);
   }
 
   return {
     provider: "nano-banana-2",
     format: record.format,
     candidates,
+    candidateUrls,
     localPath: candidates[0],
     selectedPath: candidates[0],
     refinementRequirement: options.refinementRequirement,
