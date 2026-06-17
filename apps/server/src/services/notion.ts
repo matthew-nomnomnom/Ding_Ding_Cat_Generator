@@ -660,9 +660,35 @@ async function findRejectedPage(databaseId: string, recordId: string): Promise<s
   return response.results?.[0]?.id;
 }
 
-function buildRejectedProperties(record: StickerRecord, reason?: string) {
+async function getAvailableRejectedName(baseName: string): Promise<string> {
+  const databaseId = await getRejectedDatabaseId();
+
+  if (!databaseId) {
+    return baseName;
+  }
+
+  const pages = await listDatabasePages(databaseId);
+  const usedNames = new Set(
+    pages.map((page) => getTitleProperty(page, "Name") ?? ""),
+  );
+  let index = 0;
+
+  while (true) {
+    const candidateName = index === 0 ? baseName : `${baseName}_${index}`;
+
+    if (!usedNames.has(candidateName)) {
+      return candidateName;
+    }
+
+    index += 1;
+  }
+}
+
+async function buildRejectedProperties(record: StickerRecord, reason?: string) {
+  const name = await getAvailableRejectedName(record.description);
+
   return {
-    Name: title(`${record.theme}/${record.description}`),
+    Name: title(name),
     "Record ID": richText(record.id),
     Theme: richText(record.theme),
     Motion: richText(record.description),
@@ -713,7 +739,7 @@ export async function uploadRejectedStickerRun(record: StickerRecord, reason?: s
     }),
   );
   const uploadedFiles = candidateFiles.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-  const properties = buildRejectedProperties(record, reason);
+  const properties = await buildRejectedProperties(record, reason);
   const existingPageId = await findRejectedPage(databaseId, record.id);
 
   if (existingPageId) {
