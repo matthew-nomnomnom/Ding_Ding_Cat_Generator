@@ -494,7 +494,6 @@ export function GeneratePage() {
         <img className="brand-logo" src="/TramPlus_4C_BLK-01.png" alt="TramPlus" />
         <div className="topbar-meta">
           <span>AI Image Generator</span>
-          <a href="/history">History</a>
         </div>
       </nav>
 
@@ -619,7 +618,7 @@ export function GeneratePage() {
               <div className="loading-state">
                 <div className="cat-bounce cat-mark"><ImageIcon aria-hidden="true" size={30} /></div>
                 {generationProgress && generationProgress.current > 0 ? (
-                  <p style={{ color: festival.color }}>Drawing candidate {generationProgress.current} of {generationProgress.total}</p>
+                  <p style={{ color: festival.color }}>Candidates ready: {generationProgress.current} / {generationProgress.total}</p>
                 ) : (
                   <p style={{ color: festival.color }}>Drawing Ding Ding Cat</p>
                 )}

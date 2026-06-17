@@ -23,10 +23,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function listStickers(): Promise<StickerRecord[]> {
-  return request<StickerRecord[]>("/api/stickers");
-}
-
 export function createSticker(input: CreateStickerInput): Promise<StickerRecord> {
   return request<StickerRecord>("/api/stickers", {
     body: JSON.stringify(input),

@@ -154,6 +154,26 @@ async function imagePathToContentPart(absolutePath: string): Promise<OpenAiConte
   };
 }
 
+async function imageUrlToContentPart(url: string): Promise<OpenAiContentPart | undefined> {
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    const contentType = response.headers.get("content-type")?.split(";")[0] ?? "image/png";
+    const raw = Buffer.from(await response.arrayBuffer());
+
+    return {
+      type: "image_url",
+      image_url: { url: `data:${contentType};base64,${raw.toString("base64")}` },
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 async function loadReferenceImageParts(record: StickerRecord): Promise<OpenAiContentPart[]> {
   if (config.notionToken && config.notionDatabaseId) {
     const baselineReferenceUrls = (await listDataFolderFileUrls("baseline")).slice(0, maxBaselineReferences);
@@ -161,11 +181,9 @@ async function loadReferenceImageParts(record: StickerRecord): Promise<OpenAiCon
       0,
       maxThemeHistoryReferences,
     );
+    const parts = await Promise.all([...baselineReferenceUrls, ...sameThemeHistoryReferenceUrls].map(imageUrlToContentPart));
 
-    return [...baselineReferenceUrls, ...sameThemeHistoryReferenceUrls].map((url) => ({
-      type: "image_url",
-      image_url: { url },
-    }));
+    return parts.filter((part): part is OpenAiContentPart => Boolean(part));
   }
 
   const themeGeneratedRoot = path.join(generatedRoot, slugify(record.theme));
@@ -305,10 +323,11 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
 
   await mkdir(trialDirectory, { recursive: true });
 
-  const candidates: string[] = [];
   const candidateUrls: Record<string, string> = {};
+  let completedCount = 0;
 
-  for (let index = 1; index <= count; index += 1) {
+  const tasks = Array.from({ length: count }, async (_, i) => {
+    const index = i + 1;
     const fileName = config.nanoBananaApiKey
       ? `candidate-${String(index).padStart(2, "0")}.png`
       : record.format === "gif"
@@ -325,7 +344,6 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
     }
 
     const candidatePath = path.join(".runtime/generated", path.relative(runtimeGeneratedRoot, absolutePath)).replace(/\\/g, "/");
-    candidates.push(candidatePath);
     const blobPathname = await uploadRuntimeCandidateBlob(record.id, candidatePath, absolutePath);
     const mime = `image/${path.extname(absolutePath).toLowerCase() === ".svg" ? "svg+xml" : "png"}`;
     const raw = await readFile(absolutePath);
@@ -333,8 +351,17 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
     if (blobPathname) {
       candidateUrls[candidatePath] = blobPathname;
     }
-    options.onProgress?.(index, count, candidatePath, preview);
-  }
+
+    completedCount += 1;
+    options.onProgress?.(completedCount, count, candidatePath, preview);
+
+    return { index, candidatePath };
+  });
+
+  const settled = await Promise.all(tasks);
+
+  settled.sort((a, b) => a.index - b.index);
+  const candidates = settled.map((r) => r.candidatePath);
 
   return {
     provider: "nano-banana-2",
