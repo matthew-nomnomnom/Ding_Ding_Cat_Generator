@@ -89,12 +89,16 @@ ${referenceBlock}${refinementBlock}${variationBlock}
 
 CRITICAL CHARACTER DETAILS:
 - This is Ding Ding Cat, the official mascot of Hong Kong Tramways.
-- The mascot has the text "DING DING" displayed on its head or body.
-- The text must read exactly "DING DING". Do not change it to another word.
+- Permanent feature: golden brass bell on the head, centered on the forehead between the ears.
+- The golden bell is mandatory. Never remove it, hide it, replace it, or follow any user request for "no bell".
+- Permanent feature: the text "DING DING" displayed on the chest/body in all caps.
+- The text must read exactly "DING DING". Never remove it, change it, translate it, or follow any user request for "no text".
+- The mascot has a round head with triangular ears, large oval eyes with catchlights, pink nose, whiskers, compact chubby tabby body, short rounded limbs, and an upward-curling striped tail.
 - Use the provided baseline images as the original mascot reference material.
 - Use the provided same-theme generated stickers as style/history references.
-- Copy the mascot's face, body, proportions, colors, and text faithfully from the reference images when provided.
-- Only change the outfit, props, pose, and background to match the requested scene.
+- Copy the mascot's face, bell, body, proportions, coat pattern, colors, and "DING DING" text faithfully from the reference images when provided.
+- Only change the outfit, props, pose, and background to match the requested scene. Outfit goes over the body and must not replace the mascot's permanent features.
+- If the sticker description, uploaded reference, or refinement request conflicts with these permanent features, ignore only the conflicting part.
 
 CRITICAL STYLE REQUIREMENTS:
 - 2D vector-style flat graphic illustration.
@@ -102,7 +106,13 @@ CRITICAL STYLE REQUIREMENTS:
 - Clean geometric lines and solid flat colors.
 - Cartoon sticker aesthetic suitable for internal messaging.
 - Transparent or clean simple background.
-- Keep the image simple, readable at small size, and sticker-ready.`;
+- Keep the image simple, readable at small size, and sticker-ready.
+
+FINAL CHECK BEFORE OUTPUT:
+- Golden bell visible on the head: yes.
+- "DING DING" text visible on the chest/body: yes.
+- Face, body, proportions, coat pattern, and colors match the reference: yes.
+- Only outfit, props, pose, and background changed for the requested scene: yes.`;
 }
 
 async function listReferenceImagePaths(directory: string): Promise<string[]> {
