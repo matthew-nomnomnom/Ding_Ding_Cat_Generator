@@ -5,7 +5,7 @@ export function App() {
   const isGeneratorPage = location.pathname === "/";
 
   return (
-    <main className="app-shell">
+    <div className="app-shell">
       {!isGeneratorPage ? (
         <header className="app-header">
           <div>
@@ -19,6 +19,6 @@ export function App() {
         </header>
       ) : null}
       <Outlet />
-    </main>
+    </div>
   );
 }

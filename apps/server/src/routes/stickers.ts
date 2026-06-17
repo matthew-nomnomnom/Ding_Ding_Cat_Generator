@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { config } from "../config.js";
 import { generateSticker } from "../services/nanoBanana.js";
 import { getAvailableNotionContentName, uploadAcceptedStickerRecord, uploadDataFolderFile, uploadRejectedStickerRun } from "../services/notion.js";
 import {
@@ -26,8 +27,8 @@ function sendSSEError(res: Response, message: string): void {
 
 export const stickersRouter = Router();
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
-const runtimeGeneratedRoot = path.join(projectRoot, ".runtime/generated");
-const uploadsDir = path.join(projectRoot, ".runtime/uploads");
+const runtimeGeneratedRoot = config.runtimeGeneratedRoot;
+const uploadsDir = path.join(path.dirname(runtimeGeneratedRoot), "uploads");
 
 export const uploadReferenceSchema = z.object({
   fileName: z.string().min(1),
@@ -51,7 +52,9 @@ const rejectStickerSchema = z.object({
 });
 
 function assertGeneratedPath(relativePath: string): string {
-  const absolutePath = path.resolve(projectRoot, relativePath);
+  const absolutePath = relativePath.startsWith(".runtime/generated/")
+    ? path.resolve(runtimeGeneratedRoot, path.relative(".runtime/generated", relativePath))
+    : path.resolve(projectRoot, relativePath);
   const isRuntimeGeneratedPath =
     absolutePath === runtimeGeneratedRoot || absolutePath.startsWith(`${runtimeGeneratedRoot}${path.sep}`);
 

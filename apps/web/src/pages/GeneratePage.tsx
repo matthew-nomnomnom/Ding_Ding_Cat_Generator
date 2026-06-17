@@ -5,88 +5,147 @@ import { acceptSticker, createSticker, generateSticker, refineSticker, rejectSti
 
 const FESTIVALS = [
   {
-    id: "lunar_new_year",
-    label: "🧧 Lunar New Year",
-    color: "#ef4444",
-    glow: "rgba(239, 68, 68, 0.2)",
-    dot: "#fca5a5",
-    hint: "Red envelopes, lanterns, gold coins & fireworks",
-    desc: "red lanterns, gold coins, fireworks, lucky symbols",
+    id: "general",
+    label: "General",
+    color: "#4DB969",
+    glow: "#EEF9F1",
+    hint: "Classic tram rides, city scenes, everyday charm",
+    desc: "general TramPlus sticker with Hong Kong tram culture, city motion, and clean brand energy",
     picks: [
-      ["🏮 Lantern dance", "dancing with red lanterns"],
-      ["🧧 Red envelope", "holding a lucky red envelope"],
-      ["🐲 Lucky dragon", "riding a golden dragon"],
-      ["🎆 Fireworks", "watching fireworks"],
-      ["🍡 Tangyuan", "eating tangyuan"],
-      ["👘 Cheongsam", "wearing a cheongsam dress"],
+      ["Classic Tram Ride", "riding happily on a classic Hong Kong tram with confident energy"],
+      ["City Explorer", "exploring the city with a bright and welcoming expression"],
+      ["Bell Helmet Hero", "standing proudly with the signature bell helmet in a clean sticker pose"],
+      ["Team Greeting", "waving hello in a friendly greeting pose for a brand sticker"],
+      ["Workshop Ready", "holding a simple notebook in a polished creative studio scene"],
+      ["Choose for Me", "create a polished general TramPlus sticker with a balanced, versatile pose"],
+    ],
+  },
+  {
+    id: "lunar",
+    label: "Lunar New Year",
+    color: "#C75948",
+    glow: "#FFF4F1",
+    hint: "Red envelopes, lanterns, gold coins, fireworks",
+    desc: "Lunar New Year with red lanterns, gold coins, fireworks, lucky symbols",
+    picks: [
+      ["Lantern Dance", "dancing gracefully with glowing red lanterns and firecrackers"],
+      ["Red Envelope", "holding a lucky red envelope, excited expression"],
+      ["Lucky Dragon", "riding proudly on a golden lucky dragon"],
+      ["Fireworks", "watching spectacular colorful fireworks light up the sky"],
+      ["Tangyuan", "eating sweet sticky rice tangyuan balls with a happy smile"],
+      ["Cheongsam", "wearing an elegant traditional red cheongsam dress"],
     ],
   },
   {
     id: "christmas",
-    label: "🎄 Christmas",
-    color: "#22c55e",
-    glow: "rgba(34, 197, 94, 0.2)",
-    dot: "#86efac",
-    hint: "Christmas trees, santa hat, snow & presents",
-    desc: "Christmas tree, santa hat, snow, presents, reindeer",
+    label: "Christmas",
+    color: "#4DB969",
+    glow: "#EEF9F1",
+    hint: "Santa hat, Christmas tree, snow, presents",
+    desc: "Christmas with Christmas tree, Santa hat, snow, presents, reindeer",
     picks: [
-      ["🎅 Santa hat", "wearing a santa hat"],
-      ["🎁 Gift", "unwrapping a present"],
-      ["⛄ Snowman", "building a snowman"],
-      ["🦌 Reindeer", "riding Rudolph"],
-      ["🍪 Cookies", "baking Christmas cookies"],
-      ["🎶 Caroling", "singing carols"],
+      ["Santa Hat", "wearing a fluffy red Santa hat, merry and jolly"],
+      ["Gift Box", "unwrapping a big Christmas present with excitement"],
+      ["Snowman", "building a cheerful snowman in a snowy field"],
+      ["Reindeer Ride", "riding Rudolph the red-nosed reindeer through the sky"],
+      ["Cookies", "baking Christmas cookies wearing a tiny chef hat"],
+      ["Caroling", "singing Christmas carols holding a tiny songbook"],
     ],
   },
   {
     id: "halloween",
-    label: "🎃 Halloween",
-    color: "#f97316",
-    glow: "rgba(249, 115, 22, 0.2)",
-    dot: "#fdba74",
-    hint: "Pumpkins, witch hats, bats & spooky night",
-    desc: "jack-o-lantern, witch hat, bats, spooky night moon",
+    label: "Halloween",
+    color: "#FFB34F",
+    glow: "#FFF7EA",
+    hint: "Pumpkin, witch hat, bats, spooky night",
+    desc: "Halloween with jack-o-lantern, witch hat, bats, spooky dark night, moon",
     picks: [
-      ["🎃 Pumpkin", "inside a glowing pumpkin"],
-      ["🧙 Witch", "wearing a witch hat"],
-      ["🦇 Bats", "flying with bat wings"],
-      ["👻 Ghost", "dressed as a ghost"],
-      ["🕷 Spider", "tangled in a spider web"],
-      ["🍬 Candy", "trick or treating"],
+      ["Pumpkin", "sitting inside a glowing carved jack-o-lantern"],
+      ["Witch Hat", "casting a spell wearing a classic pointed witch hat"],
+      ["Bat Wings", "flying with tiny bat wings under a full moon"],
+      ["Ghost Costume", "dressed as an adorable ghost costume"],
+      ["Spider Web", "tangled in a spooky spider web with a startled face"],
+      ["Trick or Treat", "trick or treating holding a candy bucket"],
     ],
   },
   {
     id: "valentine",
-    label: "💝 Valentine",
-    color: "#ec4899",
-    glow: "rgba(236, 72, 153, 0.2)",
-    dot: "#f9a8d4",
-    hint: "Hearts, roses, love letters & romance",
-    desc: "hearts, roses, love letters, cupid arrow, romance",
+    label: "Valentine",
+    color: "#B94D9C",
+    glow: "#FDF2FA",
+    hint: "Hearts, roses, love letters, romance",
+    desc: "Valentine with hearts, roses, love letters, cupid arrow, romance",
     picks: [
-      ["💌 Letter", "writing a love letter"],
-      ["🌹 Roses", "holding red roses"],
-      ["💘 Cupid", "hit by cupid arrow"],
-      ["🍫 Chocolates", "giving chocolates"],
-      ["🥂 Cheers", "toasting champagne"],
-      ["💕 Hearts", "floating with hearts"],
+      ["Love Letter", "writing a heartfelt love letter with a quill pen"],
+      ["Roses", "holding a beautiful bouquet of red roses"],
+      ["Cupid Arrow", "struck by a cupid arrow with heart-shaped eyes"],
+      ["Chocolates", "presenting an elegant heart-shaped chocolate box"],
+      ["Celebration Toast", "toasting with two tiny celebration glasses"],
+      ["Heart Cloud", "floating happily on a pink cloud surrounded by hearts"],
     ],
   },
   {
     id: "easter",
-    label: "🐣 Easter",
-    color: "#a78bfa",
-    glow: "rgba(167, 139, 250, 0.2)",
-    dot: "#c4b5fd",
-    hint: "Easter eggs, bunny ears, spring flowers & pastels",
-    desc: "Easter eggs, bunny ears, spring flowers, pastel colors",
+    label: "Easter",
+    color: "#48B6C7",
+    glow: "#EFFBFC",
+    hint: "Easter eggs, bunny ears, spring flowers, pastels",
+    desc: "Easter with colorful Easter eggs, bunny ears, spring flowers, pastel colors",
     picks: [
-      ["🥚 Easter egg", "decorating an Easter egg"],
-      ["🐰 Bunny", "wearing bunny ears"],
-      ["🌸 Flowers", "in cherry blossoms"],
-      ["🐤 Chick", "holding a baby chick"],
-      ["🍭 Candy hunt", "finding candy"],
-      ["🌈 Rainbow", "hopping over rainbow"],
+      ["Easter Egg", "carefully decorating a colorful Easter egg"],
+      ["Bunny Ears", "hopping around happily wearing fluffy pink bunny ears"],
+      ["Cherry Blossoms", "sitting peacefully in a field of cherry blossoms"],
+      ["Baby Chick", "cuddling a tiny newly hatched baby chick"],
+      ["Candy Hunt", "eagerly finding hidden Easter candies in the grass"],
+      ["Pastel Rainbow", "skipping joyfully over a pastel rainbow"],
+    ],
+  },
+  {
+    id: "midautumn",
+    label: "Mid-Autumn Festival",
+    color: "#F29B38",
+    glow: "#FFF7E9",
+    hint: "Mooncakes, lantern glow, full moon, night sky",
+    desc: "Mid-Autumn Festival with full moon, lantern glow, mooncakes, and warm evening colors",
+    picks: [
+      ["Mooncake Time", "holding a mooncake proudly under the full moon"],
+      ["Lantern Walk", "walking with a glowing lantern on a festive evening"],
+      ["Moon Gazing", "looking up at a bright full moon with a calm happy smile"],
+      ["Harbour Night", "enjoying a moonlit Hong Kong harbour night in sticker style"],
+      ["Family Gathering", "celebrating a warm Mid-Autumn gathering with festive details"],
+      ["Choose for Me", "create a polished Mid-Autumn sticker with moonlight and lantern details"],
+    ],
+  },
+  {
+    id: "dragonboat",
+    label: "Dragon Boat Festival",
+    color: "#2E8F74",
+    glow: "#EDF9F5",
+    hint: "Dragon boats, bamboo leaves, racing spirit, water",
+    desc: "Dragon Boat Festival with dragon boats, bamboo leaf dumplings, splashing water, and racing energy",
+    picks: [
+      ["Dragon Boat Race", "racing proudly on a dragon boat with energetic motion"],
+      ["Rice Dumpling", "holding a traditional rice dumpling wrapped in bamboo leaves"],
+      ["Victory Pose", "celebrating a strong finish after a dragon boat race"],
+      ["Water Splash", "splashing through the water with dynamic festival energy"],
+      ["Team Captain", "leading a dragon boat team with determined focus"],
+      ["Choose for Me", "create a polished Dragon Boat Festival sticker with racing energy"],
+    ],
+  },
+  {
+    id: "birthday",
+    label: "Birthday",
+    color: "#4DA9FF",
+    glow: "#EEF6FF",
+    hint: "Cake, candles, ribbons, celebration",
+    desc: "birthday celebration with cake, candles, ribbons, confetti, and cheerful party details",
+    picks: [
+      ["Birthday Cake", "presenting a birthday cake with a cheerful smile"],
+      ["Wish Moment", "making a birthday wish beside glowing candles"],
+      ["Party Hat", "wearing a neat party hat in a celebratory pose"],
+      ["Gift Surprise", "opening a surprise gift box with excitement"],
+      ["Celebrate Big", "posing in a bright birthday celebration scene"],
+      ["Choose for Me", "create a polished birthday sticker with cheerful celebration details"],
     ],
   },
 ];
@@ -370,9 +429,10 @@ export function GeneratePage() {
   }
 
   return (
-    <section
-      className="generator-card"
+    <main
+      className="page-shell"
       style={{ "--festival-color": festival.color, "--festival-glow": festival.glow } as CSSProperties}
+      onClick={() => setIsFestivalOpen(false)}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -386,231 +446,221 @@ export function GeneratePage() {
           </div>
         </div>
       ) : null}
-      <div className="ding-hero">
-        <h1>🐱 Ding Ding Cat Sticker Generator</h1>
-        <p>Describe a cat sticker and let AI bring it to life</p>
-      </div>
+      <div className="brand-wash" />
+      <nav className="topbar" onClick={(event) => event.stopPropagation()}>
+        <img className="brand-logo" src="/tramplus-green.svg" alt="TramPlus" />
+        <div className="topbar-meta">
+          <span>Ding Ding Cat Studio</span>
+          <a href="/history">History</a>
+        </div>
+      </nav>
 
-      <form className="ding-form" onSubmit={handleSubmit}>
-        <div>
-          <div className="field-label">Festival style</div>
-          <div className="festival-picker">
-            <button className="festival-trigger" type="button" onClick={() => setIsFestivalOpen((open) => !open)}>
-              <span>{festival.label}</span>
-              <span className={isFestivalOpen ? "chevron open" : "chevron"}>▼</span>
-            </button>
-            {isFestivalOpen ? (
-              <div className="festival-menu">
-                {FESTIVALS.map((item) => (
-                  <button
-                    className={item.id === festival.id ? "festival-option active" : "festival-option"}
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setFestival(item);
-                      setIsFestivalOpen(false);
-                    }}
-                  >
-                    <span>{item.label}</span>
-                    {item.id === festival.id ? <span>✓</span> : null}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+      <section className="hero-grid">
+        <div className="hero-panel">
+          <span className="eyebrow">TramPlus Creative Tool</span>
+          <h1>Create clean Ding Ding Cat stickers.</h1>
+          <p>Fast, friendly, and ready for TramPlus.</p>
+          <div className="brand-note">
+            <span>Brand</span>
+            <img className="brand-logo inverse" src="/tramplus-white.svg" alt="TramPlus" />
+            <img className="tagline-image" src="/tagline-black.png" alt="where engineering excellence meets education" />
           </div>
         </div>
 
-        <div className="festival-hint">✨ {festival.hint}</div>
-
-        <div>
-          <div className="field-label">Describe your sticker</div>
-          <div className="prompt-row">
-            <input
-              name="description"
-              placeholder={`e.g. ${festival.picks[0][1]}`}
-              required
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              onClick={() => setIsFestivalOpen(false)}
-            />
-            <button className="primary-button" type="submit" disabled={isSubmitting || !description.trim()}>
-              {isSubmitting ? "⏳ Generate five" : "✦ Generate five"}
-            </button>
+        <form className="workbench" onSubmit={handleSubmit} onClick={(event) => event.stopPropagation()}>
+          <div className="card-header">
+            <div>
+              <span className="eyebrow">Create</span>
+              <h2>Sticker Brief</h2>
+            </div>
+            <div className="status-pill">5 candidates</div>
           </div>
-        </div>
 
-        <div>
-          <div className="field-label">Reference image (optional)</div>
-          <div className="upload-area">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              className="upload-input"
-              disabled={isSubmitting}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  storeReferenceFile(file);
-                }
-              }}
-            />
-            {referenceImagePreview ? (
-              <div className="upload-preview">
-                <img src={referenceImagePreview} alt="Reference preview" />
-                <button
-                  type="button"
-                  className="upload-remove"
-                  onClick={() => removeReferenceImage()}
-                  aria-label="Remove reference image"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div>
-          <div className="field-label">Quick picks</div>
-          <div className="quick-picks">
-            {festival.picks.map(([label, prompt]) => (
-              <button key={label} type="button" disabled={isSubmitting} onClick={() => applyPick(prompt)}>
-                {label}
+          <div className="field-grid">
+            <div className="field-block dropdown-block">
+              <label>Festival Style</label>
+              <button
+                className={isFestivalOpen ? "select-button open" : "select-button"}
+                type="button"
+                onClick={() => setIsFestivalOpen((open) => !open)}
+                style={{ borderColor: isFestivalOpen ? festival.color : undefined, boxShadow: isFestivalOpen ? `0 0 0 4px ${festival.color}22` : undefined }}
+              >
+                <span><i style={{ background: festival.color }} />{festival.label}</span>
+                <b className={isFestivalOpen ? "rotated" : ""}>⌄</b>
               </button>
-            ))}
-          </div>
-        </div>
-
-        {error ? <p className="form-message error full-width">{error}</p> : null}
-        {message ? <p className="form-message success full-width">{message}</p> : null}
-      </form>
-
-      <div className="sticker-canvas" onClick={() => setIsFestivalOpen(false)}>
-        {isSubmitting || generationProgress ? (
-          <div className="canvas-state">
-            <div className="cat-bounce">🐱</div>
-            {generationProgress && generationProgress.current > 0 ? (
-              <>
-                <p>
-                  Generating candidate {generationProgress.current} of {generationProgress.total}...
-                </p>
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
-                  />
+              {isFestivalOpen ? (
+                <div className="menu-list festival-menu">
+                  {FESTIVALS.map((item) => (
+                    <button
+                      className={item.id === festival.id ? "selected" : ""}
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFestival(item);
+                        setIsFestivalOpen(false);
+                      }}
+                      style={{ color: item.id === festival.id ? item.color : undefined, background: item.id === festival.id ? item.glow : undefined }}
+                    >
+                      <span><i style={{ background: item.color }} />{item.label}</span>
+                      {item.id === festival.id ? <span>✓</span> : null}
+                    </button>
+                  ))}
                 </div>
-              </>
-            ) : (
-              <p>Ding Ding is generating...</p>
-            )}
-          </div>
-        ) : null}
-
-        {!isSubmitting && !generationProgress && !record ? (
-          <div className="canvas-state muted">
-            <div>🐾</div>
-            <p>Your sticker will appear here</p>
-          </div>
-        ) : null}
-
-        {!isSubmitting && !generationProgress && record ? (
-          <div className="result-display">
-            <div className="candidate-grid">
-              {candidates.map((candidatePath, index) => {
-                const candidateUrl = getGeneratedAssetUrl(candidatePath);
-                const isSelected = candidatePath === selectedCandidate;
-
-                return (
-                  <button
-                    className={isSelected ? "candidate-card selected" : "candidate-card"}
-                    key={candidatePath}
-                    type="button"
-                    onClick={() => setSelectedPath(candidatePath)}
-                  >
-                    <span>Candidate {index + 1}</span>
-                    {candidatePath.endsWith(".svg") || candidatePath.endsWith(".png") || candidatePath.endsWith(".jpg") || candidatePath.endsWith(".webp") ? (
-                      <img
-                        src={candidateUrl}
-                        alt={`Candidate ${index + 1}: ${record.description}`}
-                        onDoubleClick={() => setLightboxImage(candidateUrl)}
-                      />
-                    ) : (
-                      <strong>{candidatePath}</strong>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="result-meta">
-              <p>{selectedCandidate ? "Selected candidate" : "Choose one candidate"}</p>
-              <span>{selectedCandidate ?? "No candidate selected yet"}</span>
-            </div>
-
-            <div className="refine-box">
-              <label>
-                Fine-tune requirement
-                <textarea
-                  placeholder="e.g. make the lantern bigger, simplify the background, keep the same pose"
-                  rows={3}
-                  value={refinementRequirement}
-                  onChange={(event) => setRefinementRequirement(event.target.value)}
-                />
-              </label>
-              <button type="button" disabled={activeAction !== null || !selectedCandidate} onClick={() => void handleRefine()}>
-                {activeAction === "refine" ? "Refining..." : "Refine selected"}
-              </button>
-            </div>
-
-            <div className="refine-box">
-              <label>
-                Reject reason
-                <textarea
-                  placeholder="Optional: what went wrong? e.g. wrong character, bad text, too cluttered"
-                  rows={2}
-                  value={rejectReason}
-                  onChange={(event) => setRejectReason(event.target.value)}
-                />
-              </label>
-              {selectedCandidate ? (
-                <a className="download-button" href={getGeneratedAssetUrl(selectedCandidate)} download>
-                  Download selected
-                </a>
               ) : null}
             </div>
 
-            <div className="result-actions">
-              <button type="button" disabled={activeAction !== null} onClick={() => void handleRegenerate()}>
-                {activeAction === "regenerate" ? "Regenerating..." : "Regenerate five"}
-              </button>
-              <button type="button" disabled={activeAction !== null} onClick={() => void handleDecision("reject")}>
-                {activeAction === "reject" ? "Rejecting..." : "Reject"}
-              </button>
-              <button type="button" disabled={activeAction !== null || !selectedCandidate} onClick={() => void handleDecision("accept")}>
-                {activeAction === "accept" ? "Uploading..." : "Accept"}
+            <div className="field-block">
+              <label>Quick Pick</label>
+              <div className="quick-picks">
+                {festival.picks.map(([label, prompt]) => (
+                  <button key={label} type="button" disabled={isSubmitting} onClick={() => applyPick(prompt)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            </div>
+
+            <div className="field-block">
+              <label>Reference Image (Optional)</label>
+              <div className="upload-area">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="upload-input"
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) {
+                      storeReferenceFile(file);
+                    }
+                  }}
+                />
+                {referenceImagePreview ? (
+                  <div className="upload-preview">
+                    <img src={referenceImagePreview} alt="Reference preview" />
+                    <button
+                      type="button"
+                      className="upload-remove"
+                      onClick={() => removeReferenceImage()}
+                      aria-label="Remove reference image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="field-block prompt-block">
+            <label>Describe Your Sticker</label>
+            <div className="prompt-row">
+              <input
+                name="description"
+                placeholder={`Example: ${festival.picks[0][1]}`}
+                required
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                disabled={isSubmitting}
+              />
+              <button className="primary-action" type="submit" disabled={isSubmitting || !description.trim()}>
+                {isSubmitting ? "Generating" : "Generate five"}
               </button>
             </div>
+            <p className="helper-text">Quick picks fill the prompt. The review panel keeps refinement, rejection, and upload connected.</p>
           </div>
-        ) : null}
-      </div>
+
+          <div className="hint-strip" style={{ background: festival.glow, borderColor: festival.color, color: festival.color }}>
+            <span style={{ background: festival.color }} />{festival.hint}
+          </div>
+
+          {error ? <p className="form-message error full-width">{error}</p> : null}
+          {message ? <p className="form-message success full-width">{message}</p> : null}
+        </form>
+      </section>
+
+      <section className="studio-grid" onClick={() => setIsFestivalOpen(false)}>
+        <div className="preview-card" style={{ borderColor: record || isSubmitting || generationProgress ? festival.color : undefined, boxShadow: record || isSubmitting || generationProgress ? `0 0 0 5px ${festival.color}14, var(--shadow-card)` : undefined }}>
+          <div className="preview-topline">
+            <span>Preview Canvas</span>
+            <strong style={{ color: festival.color }}>{festival.label}</strong>
+          </div>
+
+          <div className="preview-stage">
+            {isSubmitting || generationProgress ? (
+              <div className="loading-state">
+                <div className="cat-bounce cat-mark">🐱</div>
+                {generationProgress && generationProgress.current > 0 ? (
+                  <p style={{ color: festival.color }}>Drawing candidate {generationProgress.current} of {generationProgress.total}</p>
+                ) : (
+                  <p style={{ color: festival.color }}>Drawing Ding Ding Cat</p>
+                )}
+                <div className="dot-row">{[0, 1, 2].map((item) => <span key={item} style={{ background: festival.color, animationDelay: `${item * 0.15}s` }} />)}</div>
+              </div>
+            ) : null}
+
+            {!isSubmitting && !generationProgress && !record ? (
+              <div className="empty-state"><div className="cat-mark">🐱</div><p>Your generated sticker candidates will appear here.</p></div>
+            ) : null}
+
+            {!isSubmitting && !generationProgress && record ? (
+              <div className="result-display">
+                <div className="candidate-grid">
+                  {candidates.map((candidatePath, index) => {
+                    const candidateUrl = getGeneratedAssetUrl(candidatePath);
+                    const isSelected = candidatePath === selectedCandidate;
+
+                    return (
+                      <button className={isSelected ? "candidate-card selected" : "candidate-card"} key={candidatePath} type="button" onClick={() => setSelectedPath(candidatePath)}>
+                        <span>Candidate {index + 1}</span>
+                        {candidatePath.endsWith(".svg") || candidatePath.endsWith(".png") || candidatePath.endsWith(".jpg") || candidatePath.endsWith(".webp") ? (
+                          <img src={candidateUrl} alt={`Candidate ${index + 1}: ${record.description}`} onDoubleClick={() => setLightboxImage(candidateUrl)} />
+                        ) : (
+                          <strong>{candidatePath}</strong>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="result-meta"><p>{selectedCandidate ? "Selected candidate" : "Choose one candidate"}</p><span>{selectedCandidate ?? "No candidate selected yet"}</span></div>
+
+                <div className="review-grid">
+                  <label>
+                    Fine-tune requirement
+                    <textarea placeholder="Make the lantern bigger, simplify the background, keep the same pose" rows={3} value={refinementRequirement} onChange={(event) => setRefinementRequirement(event.target.value)} />
+                  </label>
+                  <button className="secondary-cta" type="button" disabled={activeAction !== null || !selectedCandidate} onClick={() => void handleRefine()}>{activeAction === "refine" ? "Refining" : "Refine selected"}</button>
+                </div>
+
+                <div className="review-grid">
+                  <label>
+                    Reject reason
+                    <textarea placeholder="Optional: what went wrong?" rows={2} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} />
+                  </label>
+                  {selectedCandidate ? <a className="download-button" href={getGeneratedAssetUrl(selectedCandidate)} download>Download selected</a> : null}
+                </div>
+
+                <div className="result-actions">
+                  <button className="secondary-cta" type="button" disabled={activeAction !== null} onClick={() => void handleRegenerate()}>{activeAction === "regenerate" ? "Regenerating" : "Regenerate five"}</button>
+                  <button className="danger-cta" type="button" disabled={activeAction !== null} onClick={() => void handleDecision("reject")}>{activeAction === "reject" ? "Rejecting" : "Reject"}</button>
+                  <button className="primary-action" type="button" disabled={activeAction !== null || !selectedCandidate} onClick={() => void handleDecision("accept")}>{activeAction === "accept" ? "Uploading" : "Accept"}</button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
 
       {lightboxImage ? (
         <div className="lightbox-overlay" onClick={() => setLightboxImage(null)}>
-          <button className="lightbox-close" onClick={() => setLightboxImage(null)} aria-label="Close lightbox">
-            ✕
-          </button>
-          <img
-            className="lightbox-image"
-            src={lightboxImage}
-            alt="Enlarged sticker"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <button className="lightbox-close" onClick={() => setLightboxImage(null)} aria-label="Close lightbox">✕</button>
+          <img className="lightbox-image" src={lightboxImage} alt="Enlarged sticker" onClick={(event) => event.stopPropagation()} />
         </div>
       ) : null}
 
-      <p className="credit-line">Made with love by Tramplus · Powered by Gemini Nano Banana 2</p>
-    </section>
+      <footer className="footer-mark"><img className="footer-logo" src="/tramplus-green.svg" alt="TramPlus" /><span>where engineering excellence meets education</span></footer>
+    </main>
   );
 }

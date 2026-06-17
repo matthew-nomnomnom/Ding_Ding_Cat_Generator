@@ -3,6 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const runtimeGeneratedRoot = process.env.VERCEL
+  ? path.join("/tmp", "sticker-platform", "runtime", "generated")
+  : path.join(projectRoot, ".runtime/generated");
 
 dotenv.config({ path: path.join(projectRoot, ".env") });
 dotenv.config();
@@ -15,4 +18,6 @@ export const config = {
   nanoBananaModel: process.env.NANO_BANANA_MODEL ?? "google/gemini-3.1-flash-image-preview",
   notionToken: process.env.NOTION_TOKEN ?? "",
   notionDatabaseId: process.env.NOTION_DATABASE_ID ?? "",
+  runtimeGeneratedRoot,
+  vercelUrl: process.env.VERCEL_URL ?? "",
 };

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build --workspace apps/web",
+  "outputDirectory": "apps/web/dist",
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/runtime/generated/(.*)", "destination": "/api/runtime/generated/$1" },
+    { "source": "/generated/(.*)", "destination": "/api/generated/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
