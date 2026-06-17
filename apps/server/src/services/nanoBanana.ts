@@ -1,5 +1,5 @@
 import type { StickerRecord, StickerResult } from "@sticker-platform/shared";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
@@ -11,6 +11,7 @@ const runtimeGeneratedRoot = path.join(projectRoot, ".runtime/generated");
 const baselineRoot = path.join(projectRoot, "data/baseline");
 const maxBaselineReferences = 8;
 const maxThemeHistoryReferences = 8;
+const maxGenerationRetries = 1;
 
 type OpenAiContentPart =
   | { type: "text"; text: string }
@@ -210,6 +211,83 @@ function extractImageDataUrl(response: ImageResponse): string | undefined {
   return undefined;
 }
 
+function buildVerificationPrompt(record: StickerRecord): string {
+  return `You are a strict quality control reviewer. Examine this generated sticker image and verify it meets ALL requirements.
+
+Respond with ONLY a valid JSON object (no markdown fences, no extra text):
+{"pass":true/false,"issues":["specific issue found"],"score":0-100}
+
+CRITICAL REQUIREMENTS TO VERIFY:
+1. MAIN SUBJECT: A recognizable cat mascot character is the primary subject of the image.
+2. "DING DING" TEXT: The text "DING DING" must be clearly visible on the cat character's head area. It must read exactly "DING DING".
+3. FLAT 2D VECTOR STYLE: Clean geometric lines and solid flat colors only. Must NOT contain 3D rendering, realistic shading, gradients, or visible texture.
+4. FESTIVAL THEME: The props, colors, and scene must clearly match the requested theme: ${describeTheme(record.theme)}.
+5. STICKER-READABLE: The image must be simple enough to be readable at small messaging-app sticker size (clear shapes, not overly detailed).`;
+}
+
+type VerificationResult = { pass: boolean; issues: string[] };
+
+async function verifyStickerCompliance(
+  record: StickerRecord,
+  imageDataUrl: string,
+): Promise<VerificationResult> {
+  if (!config.nanoBananaApiKey) {
+    return { pass: true, issues: [] };
+  }
+
+  try {
+    const content: OpenAiContentPart[] = [
+      { type: "image_url", image_url: { url: imageDataUrl } },
+      { type: "text", text: buildVerificationPrompt(record) },
+    ];
+
+    const response = await fetch(`${config.nanoBananaApiUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.nanoBananaApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.nanoBananaModel,
+        messages: [{ role: "user", content }],
+        max_tokens: 300,
+      }),
+    });
+
+    if (!response.ok) {
+      return { pass: true, issues: [] };
+    }
+
+    const data = (await response.json()) as ImageResponse;
+    const text = data.choices?.[0]?.message?.content;
+
+    if (!text || typeof text !== "string") {
+      return { pass: true, issues: [] };
+    }
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { pass: true, issues: [] };
+    }
+
+    const result = JSON.parse(jsonMatch[0]) as { pass?: boolean; issues?: string[] };
+
+    return {
+      pass: result.pass !== false,
+      issues: Array.isArray(result.issues) ? result.issues : [],
+    };
+  } catch {
+    return { pass: true, issues: [] };
+  }
+}
+
+const verificationLogDir = path.join(projectRoot, ".runtime/logs");
+const verificationLogPath = path.join(verificationLogDir, "verification.jsonl");
+
+async function logVerificationResult(entry: Record<string, unknown>): Promise<void> {
+  await appendFile(verificationLogPath, `${JSON.stringify(entry)}\n`, "utf8");
+}
+
 async function generateWithNanoBanana(
   record: StickerRecord,
   outputPath: string,
@@ -220,41 +298,90 @@ async function generateWithNanoBanana(
     throw new Error("Nano Banana API key is not configured");
   }
 
-  const content: OpenAiContentPart[] = [
-    ...(await loadReferenceImageParts(record)),
-    ...(await loadSelectedImagePart(options.selectedImagePath)),
-    ...(await loadUserReferencePart(options.referenceImagePath)),
-    { type: "text", text: buildGenerationPrompt(record, options, variationIndex) },
-  ];
+  let currentOptions = options;
+  let lastIssues: string[] = [];
 
-  const response = await fetch(`${config.nanoBananaApiUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.nanoBananaApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: config.nanoBananaModel,
-      messages: [{ role: "user", content }],
-      modalities: ["image"],
-      n: 1,
-    }),
-  });
+  for (let attempt = 0; attempt <= maxGenerationRetries; attempt++) {
+    const content: OpenAiContentPart[] = [
+      ...(await loadReferenceImageParts(record)),
+      ...(await loadSelectedImagePart(currentOptions.selectedImagePath)),
+      ...(await loadUserReferencePart(currentOptions.referenceImagePath)),
+      { type: "text", text: buildGenerationPrompt(record, currentOptions, variationIndex) },
+    ];
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Nano Banana request failed with ${response.status}: ${body.slice(0, 300)}`);
+    const response = await fetch(`${config.nanoBananaApiUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.nanoBananaApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.nanoBananaModel,
+        messages: [{ role: "user", content }],
+        modalities: ["image"],
+        n: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Nano Banana request failed with ${response.status}: ${body.slice(0, 300)}`);
+    }
+
+    const data = (await response.json()) as ImageResponse;
+    const imageDataUrl = extractImageDataUrl(data);
+
+    if (!imageDataUrl) {
+      throw new Error("Nano Banana response did not include an image");
+    }
+
+    const base64 = imageDataUrl.startsWith("data:") ? imageDataUrl.split(",", 2)[1] : imageDataUrl;
+
+    const verification = await verifyStickerCompliance(record, imageDataUrl);
+
+    await mkdir(verificationLogDir, { recursive: true });
+    await logVerificationResult({
+      timestamp: new Date().toISOString(),
+      recordId: record.id,
+      theme: record.theme,
+      description: record.description,
+      candidate: variationIndex,
+      attempt: attempt + 1,
+      pass: verification.pass,
+      issues: verification.issues,
+    });
+
+    if (verification.pass) {
+      await writeFile(outputPath, Buffer.from(base64, "base64"));
+      return;
+    }
+
+    lastIssues = verification.issues;
+
+    if (attempt < maxGenerationRetries) {
+      console.log(
+        `Candidate ${variationIndex} attempt ${attempt + 1} failed verification: ${lastIssues.slice(0, 3).join("; ")}. Retrying...`,
+      );
+
+      currentOptions = {
+        ...currentOptions,
+        refinementRequirement: [
+          currentOptions.refinementRequirement,
+          `Fix these issues from the previous attempt: ${lastIssues.join(". ")}`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      };
+      continue;
+    }
+
+    console.log(
+      `Candidate ${variationIndex} accepted after ${maxGenerationRetries} retries. Remaining issues: ${lastIssues.slice(0, 3).join("; ")}`,
+    );
+
+    await writeFile(outputPath, Buffer.from(base64, "base64"));
+    return;
   }
-
-  const data = (await response.json()) as ImageResponse;
-  const imageDataUrl = extractImageDataUrl(data);
-
-  if (!imageDataUrl) {
-    throw new Error("Nano Banana response did not include an image");
-  }
-
-  const base64 = imageDataUrl.startsWith("data:") ? imageDataUrl.split(",", 2)[1] : imageDataUrl;
-  await writeFile(outputPath, Buffer.from(base64, "base64"));
 }
 
 export async function generateSticker(record: StickerRecord, options: GenerateOptions = {}): Promise<StickerResult> {
@@ -264,9 +391,10 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
 
   await mkdir(trialDirectory, { recursive: true });
 
-  const candidates: string[] = [];
+  let completedCount = 0;
 
-  for (let index = 1; index <= count; index += 1) {
+  const tasks = Array.from({ length: count }, async (_, i) => {
+    const index = i + 1;
     const fileName = config.nanoBananaApiKey
       ? `candidate-${String(index).padStart(2, "0")}.png`
       : record.format === "gif"
@@ -282,9 +410,18 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
       await writeFile(absolutePath, buildPlaceholderSvg(record), "utf8");
     }
 
-    candidates.push(path.relative(projectRoot, absolutePath).replace(/\\/g, "/"));
-    options.onProgress?.(index, count, candidates[candidates.length - 1]);
-  }
+    const relativePath = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+
+    completedCount += 1;
+    options.onProgress?.(completedCount, count, relativePath);
+
+    return { index, relativePath };
+  });
+
+  const settled = await Promise.all(tasks);
+
+  settled.sort((a, b) => a.index - b.index);
+  const candidates = settled.map((r) => r.relativePath);
 
   return {
     provider: "nano-banana-2",

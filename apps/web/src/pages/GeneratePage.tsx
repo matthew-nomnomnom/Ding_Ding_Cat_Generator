@@ -592,7 +592,7 @@ export function GeneratePage() {
               <div className="loading-state">
                 <div className="cat-bounce cat-mark">🐱</div>
                 {generationProgress && generationProgress.current > 0 ? (
-                  <p style={{ color: festival.color }}>Drawing candidate {generationProgress.current} of {generationProgress.total}</p>
+                  <p style={{ color: festival.color }}>Candidates ready: {generationProgress.current} / {generationProgress.total}</p>
                 ) : (
                   <p style={{ color: festival.color }}>Drawing Ding Ding Cat</p>
                 )}
