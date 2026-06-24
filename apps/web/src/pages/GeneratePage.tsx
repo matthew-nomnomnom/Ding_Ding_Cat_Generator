@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StickerRecord } from "@sticker-platform/shared";
-import { createSticker, generateSticker, uploadReferenceImage, acceptSticker, rejectSticker } from "../lib/api";
+import { acceptSticker, createSticker, generateSticker, refineSticker, rejectSticker, uploadReferenceImage } from "../lib/api";
 
 const FESTIVALS = [
   { id: "general", label: "General", desc: "general TramPlus sticker with Hong Kong tram culture, city motion, and clean brand energy",
@@ -136,15 +136,21 @@ export function GeneratePage() {
   const [candidatePreviews, setCandidatePreviews] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [busy, setBusy] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<{ fileName: string; dataUrl: string } | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [refinementRequirement, setRefinementRequirement] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number } | null>(null);
+  const dragCounterRef = useRef(0);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const currentFestival = FESTIVALS.find((f) => f.id === festivalId) ?? FESTIVALS[0];
-  const selectedCandidate = record?.result?.selectedPath ?? record?.result?.candidates?.[0] ?? null;
+  const selectedCandidate = selectedPath ?? record?.result?.selectedPath ?? record?.result?.candidates?.[0] ?? null;
   const resultImageUrl = selectedCandidate ? getCandidatePreviewUrl(record!, selectedCandidate, candidatePreviews) : null;
 
   function handleFestivalChange(value: string) {
@@ -185,43 +191,59 @@ export function GeneratePage() {
     if (photoInputRef.current) photoInputRef.current.value = "";
   }
 
+  const handleEscape = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && lightboxImage) {
+        setLightboxImage(null);
+      }
+    },
+    [lightboxImage],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [handleEscape]);
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingFile(true);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDraggingFile(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+    dragCounterRef.current = 0;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      handlePhotoSelect(file);
+    }
+  }
+
   function esc(str: string) {
     const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
     return str.replace(/[&<>"']/g, (s) => map[s]);
-  }
-
-  async function handleAccept() {
-    if (!record || actionLoading) return;
-    setActionLoading(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const result = await acceptSticker(record.id, { selectedPath: selectedCandidate ?? undefined });
-      setMessage(`Accepted! Notion page: ${result.notionPageId}`);
-      setRecord(null);
-      setCandidatePreviews({});
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Failed to accept sticker");
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  async function handleReject() {
-    if (!record || actionLoading) return;
-    setActionLoading(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const result = await rejectSticker(record.id);
-      setMessage(`Rejected. Notion page: ${result.notionPageId}`);
-      setRecord(null);
-      setCandidatePreviews({});
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Failed to reject sticker");
-    } finally {
-      setActionLoading(false);
-    }
   }
 
   async function handleGenerate() {
@@ -233,6 +255,9 @@ export function GeneratePage() {
     setError(null);
     setMessage(null);
     setRecord(null);
+    setSelectedPath(null);
+    setRefinementRequirement("");
+    setRejectReason("");
     setCandidatePreviews({});
 
     try {
@@ -252,6 +277,7 @@ export function GeneratePage() {
       }, { theme, description: prompt, referenceImagePath: refPath, referenceImageUrl: refUrl });
 
       setRecord(generatedRecord);
+      setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
       const selected = generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null;
       if (selected && candidatePreviews[selected]) {
         setHistory((prev) => [{
@@ -271,6 +297,96 @@ export function GeneratePage() {
     }
   }
 
+  async function handleRegenerate() {
+    if (!record) return;
+    const theme = record.theme;
+
+    setError(null);
+    setMessage(null);
+    setBusy(true);
+    setCandidatePreviews({});
+
+    try {
+      const generatedRecord = await generateSticker(record.id, (_current, _total, candidate, preview) => {
+        if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+      }, { theme, description: record.description });
+
+      setRecord(generatedRecord);
+      setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
+      setRefinementRequirement("");
+      setMessage("Generated five new candidates.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Failed to regenerate candidates");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRefine() {
+    if (!record || !selectedCandidate) return;
+
+    if (!refinementRequirement.trim()) {
+      setError("Describe what to refine before sending it back to the model.");
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setBusy(true);
+    setCandidatePreviews({});
+
+    try {
+      const refinedRecord = await refineSticker(
+        record.id,
+        {
+          selectedPath: selectedCandidate,
+          requirement: refinementRequirement.trim(),
+        },
+        (_current, _total, candidate, preview) => {
+          if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        },
+      );
+
+      setRecord(refinedRecord);
+      setSelectedPath(refinedRecord.result?.selectedPath ?? refinedRecord.result?.candidates?.[0] ?? null);
+      setRefinementRequirement("");
+      setMessage("Refined into five new candidates. Pick one or refine again.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Failed to refine selected candidate");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDecision(action: "accept" | "reject") {
+    if (!record) return;
+
+    setError(null);
+    setMessage(null);
+    setBusy(true);
+
+    try {
+      if (action === "reject") {
+        await rejectSticker(record.id, { reason: rejectReason.trim() || undefined });
+        setRecord(null);
+        setSelectedPath(null);
+        setRejectReason("");
+        setMessage("Rejected. Ready for a new prompt.");
+      } else {
+        await acceptSticker(record.id, { selectedPath: selectedCandidate ?? undefined });
+        setRecord(null);
+        setSelectedPath(null);
+        setRefinementRequirement("");
+        setRejectReason("");
+        setMessage("Accepted and uploaded. Ready for a new prompt.");
+      }
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : `Failed to ${action} sticker`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function openHistory(index: number) {
     const item = history[index];
     if (!item) return;
@@ -282,7 +398,21 @@ export function GeneratePage() {
   }
 
   return (
-    <main className="page-shell">
+    <main
+      className="page-shell"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingFile ? (
+        <div className="drop-overlay">
+          <div className="drop-box">
+            <div className="drop-icon">📁</div>
+            <p>Drop image here to use as reference</p>
+          </div>
+        </div>
+      ) : null}
       <nav className="topbar">
         <img className="brand-logo" src="/TramPlus_4C_BLK-01.png" alt="TramPlus" />
         <div className="topbar-meta">
@@ -374,18 +504,76 @@ export function GeneratePage() {
                 <div className="spinner" />
                 <p>Generating your image…</p>
               </div>
-            ) : record && resultImageUrl ? (
+            ) : record && record.result?.candidates?.length ? (
               <div className="result-view">
-                <div className="result-badge">AI Generated</div>
-                <img className="result-img" src={resultImageUrl} alt={description} />
-                <div className="actions">
-                  <button className="accept-btn" type="button" onClick={handleAccept} disabled={actionLoading || busy}>
-                    {actionLoading ? <span className="btn-spinner" /> : "✓"} Accept
+                <div className="candidate-grid">
+                  {record.result.candidates.map((candidatePath, index) => {
+                    const candidateUrl = getCandidatePreviewUrl(record, candidatePath, candidatePreviews);
+                    const isSelected = candidatePath === (selectedPath ?? record.result?.selectedPath ?? record.result?.candidates?.[0]);
+                    return (
+                      <button
+                        className={isSelected ? "candidate-card selected" : "candidate-card"}
+                        key={candidatePath}
+                        type="button"
+                        onClick={() => setSelectedPath(candidatePath)}
+                      >
+                        <span>Candidate {index + 1}</span>
+                        <img
+                          src={candidateUrl}
+                          alt={`Candidate ${index + 1}: ${record.description}`}
+                          onDoubleClick={() => setLightboxImage(candidateUrl)}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="result-meta">
+                  <p>{selectedCandidate ? "Selected candidate" : "Choose one candidate"}</p>
+                </div>
+
+                <div className="review-grid">
+                  <label>
+                    Fine-tune requirement
+                    <textarea
+                      placeholder="e.g. make the lantern bigger, simplify the background, keep the same pose"
+                      rows={3}
+                      value={refinementRequirement}
+                      onChange={(e) => setRefinementRequirement(e.target.value)}
+                    />
+                  </label>
+                  <button className="secondary-cta" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleRefine()}>
+                    {busy ? "Refining…" : "Refine selected"}
                   </button>
-                  <button className="reject-btn" type="button" onClick={handleReject} disabled={actionLoading || busy}>
-                    ✕ Reject
+                </div>
+
+                <div className="review-grid">
+                  <label>
+                    Reject reason
+                    <textarea
+                      placeholder="Optional: what went wrong?"
+                      rows={2}
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                    />
+                  </label>
+                  {selectedCandidate ? (
+                    <a className="download" href={getCandidatePreviewUrl(record, selectedCandidate, candidatePreviews)} download>
+                      Download selected
+                    </a>
+                  ) : null}
+                </div>
+
+                <div className="result-actions">
+                  <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
+                    {busy ? "Regenerating…" : "Regenerate five"}
                   </button>
-                  <a className="download" href={resultImageUrl} download>Download</a>
+                  <button className="danger-cta" type="button" disabled={busy} onClick={() => void handleDecision("reject")}>
+                    Reject
+                  </button>
+                  <button className="primary-action" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleDecision("accept")}>
+                    Accept
+                  </button>
                 </div>
               </div>
             ) : (
@@ -445,6 +633,13 @@ export function GeneratePage() {
       </section>
 
       <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</footer>
+
+      {lightboxImage ? (
+        <div className="lightbox-overlay" onClick={() => setLightboxImage(null)}>
+          <button className="lightbox-close" onClick={() => setLightboxImage(null)} aria-label="Close lightbox">✕</button>
+          <img className="lightbox-image" src={lightboxImage} alt="Enlarged sticker" onClick={(e) => e.stopPropagation()} />
+        </div>
+      ) : null}
     </main>
   );
 }

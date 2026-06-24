@@ -1838,7 +1838,7 @@ body {
 }
 
 .candidate-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .candidate-card {
@@ -1867,8 +1867,10 @@ body {
 }
 
 .result-actions {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
   width: 100%;
 }
 
