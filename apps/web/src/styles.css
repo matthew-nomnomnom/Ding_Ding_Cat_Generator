@@ -1847,6 +1847,18 @@ body {
   border-radius: 18px;
   box-shadow: 0 10px 24px rgba(15, 25, 18, 0.05);
   color: var(--oliver-muted);
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 180px;
+  padding: 12px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.candidate-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(15, 25, 18, 0.1);
 }
 
 .candidate-card.selected {
@@ -1854,8 +1866,20 @@ body {
   box-shadow: 0 0 0 5px var(--oliver-focus);
 }
 
+.candidate-card span {
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .candidate-card img {
   background: #fff;
+  border-radius: 14px;
+  height: 130px;
+  object-fit: contain;
+  padding: 8px;
+  width: 100%;
 }
 
 .result-meta span {
@@ -1878,6 +1902,50 @@ body {
   background: #fff7f5;
   border: 1px solid #efcdc6;
   color: #a64839;
+}
+
+.collapse-toggle {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--oliver-line-2);
+  border-radius: 14px;
+  color: var(--oliver-muted);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 12px 16px;
+  width: 100%;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.collapse-toggle:hover {
+  border-color: var(--oliver-forest);
+  color: var(--oliver-forest);
+}
+
+.collapse-toggle .toggle-arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.collapse-toggle.open .toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.collapse-panel {
+  animation: collapse-in 0.2s ease;
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@keyframes collapse-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .footer-mark {

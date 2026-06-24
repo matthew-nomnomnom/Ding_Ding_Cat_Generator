@@ -146,6 +146,8 @@ export function GeneratePage() {
   const [refinementRequirement, setRefinementRequirement] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number } | null>(null);
+  const [showRefinePanel, setShowRefinePanel] = useState(false);
+  const [showRejectPanel, setShowRejectPanel] = useState(false);
   const dragCounterRef = useRef(0);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -258,6 +260,8 @@ export function GeneratePage() {
     setSelectedPath(null);
     setRefinementRequirement("");
     setRejectReason("");
+    setShowRefinePanel(false);
+    setShowRejectPanel(false);
     setCandidatePreviews({});
 
     try {
@@ -532,31 +536,13 @@ export function GeneratePage() {
                   <p>{selectedCandidate ? "Selected candidate" : "Choose one candidate"}</p>
                 </div>
 
-                <div className="review-grid">
-                  <label>
-                    Fine-tune requirement
-                    <textarea
-                      placeholder="e.g. make the lantern bigger, simplify the background, keep the same pose"
-                      rows={3}
-                      value={refinementRequirement}
-                      onChange={(e) => setRefinementRequirement(e.target.value)}
-                    />
-                  </label>
-                  <button className="secondary-cta" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleRefine()}>
-                    {busy ? "Refining…" : "Refine selected"}
+                <div className="result-actions">
+                  <button className="primary-action" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleDecision("accept")}>
+                    Accept
                   </button>
-                </div>
-
-                <div className="review-grid">
-                  <label>
-                    Reject reason
-                    <textarea
-                      placeholder="Optional: what went wrong?"
-                      rows={2}
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                    />
-                  </label>
+                  <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
+                    {busy ? "Regenerating…" : "Regenerate five"}
+                  </button>
                   {selectedCandidate ? (
                     <a className="download" href={getCandidatePreviewUrl(record, selectedCandidate, candidatePreviews)} download>
                       Download selected
@@ -564,17 +550,57 @@ export function GeneratePage() {
                   ) : null}
                 </div>
 
-                <div className="result-actions">
-                  <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
-                    {busy ? "Regenerating…" : "Regenerate five"}
-                  </button>
-                  <button className="danger-cta" type="button" disabled={busy} onClick={() => void handleDecision("reject")}>
-                    Reject
-                  </button>
-                  <button className="primary-action" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleDecision("accept")}>
-                    Accept
-                  </button>
-                </div>
+                <button
+                  className={showRefinePanel ? "collapse-toggle open" : "collapse-toggle"}
+                  type="button"
+                  onClick={() => setShowRefinePanel((v) => !v)}
+                >
+                  Fine-tune requirement
+                  <span className="toggle-arrow">▼</span>
+                </button>
+                {showRefinePanel ? (
+                  <div className="collapse-panel">
+                    <div className="review-grid">
+                      <label>
+                        <textarea
+                          placeholder="e.g. make the lantern bigger, simplify the background, keep the same pose"
+                          rows={3}
+                          value={refinementRequirement}
+                          onChange={(e) => setRefinementRequirement(e.target.value)}
+                        />
+                      </label>
+                      <button className="secondary-cta" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleRefine()}>
+                        {busy ? "Refining…" : "Refine selected"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <button
+                  className={showRejectPanel ? "collapse-toggle open" : "collapse-toggle"}
+                  type="button"
+                  onClick={() => setShowRejectPanel((v) => !v)}
+                >
+                  Reject reason
+                  <span className="toggle-arrow">▼</span>
+                </button>
+                {showRejectPanel ? (
+                  <div className="collapse-panel">
+                    <div className="review-grid">
+                      <label>
+                        <textarea
+                          placeholder="Optional: what went wrong?"
+                          rows={2}
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <button className="danger-cta" type="button" disabled={busy} onClick={() => void handleDecision("reject")}>
+                      Reject
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="result-empty">
