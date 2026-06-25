@@ -56,10 +56,17 @@ async function streamRequest<T>(
   options: RequestInit,
   onProgress: (current: number, total: number, candidate: string, preview?: string) => void,
 ): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown network error";
+    throw new Error(`Could not reach the sticker API at ${apiBaseUrl || "the Vite /api proxy"} for streaming sticker API request. ${message}`);
+  }
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -75,7 +82,15 @@ async function streamRequest<T>(
   let buffer = "";
 
   while (true) {
-    const { done, value } = await reader.read();
+    let chunk: ReadableStreamReadResult<Uint8Array>;
+    try {
+      chunk = await reader.read();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown stream read error";
+      throw new Error(`Live generation progress stream disconnected while reading server-sent events from ${apiBaseUrl || "the Vite /api proxy"}. This is a browser-to-backend progress stream error, not proof that the image model failed. original browser stream error: ${message}`);
+    }
+
+    const { done, value } = chunk;
     if (done) {
       throw new Error("Stream ended without done event");
     }
