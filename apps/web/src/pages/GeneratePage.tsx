@@ -117,16 +117,6 @@ function getCandidatePreviewUrl(record: StickerRecord, candidatePath: string, pr
   return getGeneratedAssetUrl(candidatePath);
 }
 
-interface HistoryItem {
-  prompt: string;
-  festival: string;
-  quickPick: string;
-  format: string;
-  time: number;
-  record: StickerRecord;
-  previews: Record<string, string>;
-}
-
 export function GeneratePage() {
   const [festivalId, setFestivalId] = useState("");
   const [quickPick, setQuickPick] = useState("");
@@ -134,7 +124,14 @@ export function GeneratePage() {
   const [description, setDescription] = useState("");
   const [record, setRecord] = useState<StickerRecord | null>(null);
   const [candidatePreviews, setCandidatePreviews] = useState<Record<string, string>>({});
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [refineHistory, setRefineHistory] = useState<{
+    previewUrl: string;
+    description: string;
+    subtitle: string;
+    time: number;
+    record: StickerRecord;
+    previews: Record<string, string>;
+  }[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -150,6 +147,7 @@ export function GeneratePage() {
   const [showRefinePanel, setShowRefinePanel] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const dragCounterRef = useRef(0);
+  const previewsRef = useRef<Record<string, string>>({});
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const currentFestival = FESTIVALS.find((f) => f.id === festivalId) ?? FESTIVALS[0];
@@ -278,22 +276,28 @@ export function GeneratePage() {
       }
 
       const generatedRecord = await generateSticker(createdRecord.id, (_current, _total, candidate, preview) => {
-        if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        if (preview) {
+          previewsRef.current[candidate] = preview;
+          setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        }
       }, { theme, description: prompt, referenceImagePath: refPath, referenceImageUrl: refUrl });
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
-      const selected = generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null;
-      if (selected && candidatePreviews[selected]) {
-        setHistory((prev) => [{
-          prompt,
-          festival: festivalId,
-          quickPick,
-          format,
+
+      const firstCandidate = generatedRecord.result?.candidates?.[0];
+      const firstPreview = firstCandidate
+        ? (previewsRef.current[firstCandidate] || getCandidatePreviewUrl(generatedRecord, firstCandidate, {}))
+        : null;
+      if (firstPreview) {
+        setRefineHistory((prev) => [{
+          previewUrl: firstPreview,
+          description: prompt,
+          subtitle: prompt,
           time: Date.now(),
           record: generatedRecord,
-          previews: candidatePreviews,
-        }, ...prev].slice(0, 8));
+          previews: { ...previewsRef.current },
+        }, ...prev]);
       }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to generate sticker");
@@ -338,6 +342,12 @@ export function GeneratePage() {
     setError(null);
     setMessage(null);
     setBusy(true);
+
+    const refinePreviewUrl = selectedCandidate
+      ? getCandidatePreviewUrl(record, selectedCandidate, candidatePreviews)
+      : null;
+
+    previewsRef.current = {};
     setCandidatePreviews({});
 
     try {
@@ -348,7 +358,10 @@ export function GeneratePage() {
           requirement: refinementRequirement.trim(),
         },
         (_current, _total, candidate, preview) => {
-          if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+          if (preview) {
+            previewsRef.current[candidate] = preview;
+            setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+          }
         },
       );
 
@@ -356,6 +369,17 @@ export function GeneratePage() {
       setSelectedPath(refinedRecord.result?.selectedPath ?? refinedRecord.result?.candidates?.[0] ?? null);
       setRefinementRequirement("");
       setMessage("Refined into five new candidates. Pick one or refine again.");
+
+      if (refinePreviewUrl) {
+        setRefineHistory((prev) => [{
+          previewUrl: refinePreviewUrl,
+          description: record.description,
+          subtitle: refinementRequirement.trim(),
+          time: Date.now(),
+          record: refinedRecord,
+          previews: { ...previewsRef.current },
+        }, ...prev]);
+      }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to refine selected candidate");
     } finally {
@@ -393,14 +417,11 @@ export function GeneratePage() {
     }
   }
 
-  function openHistory(index: number) {
-    const item = history[index];
-    if (!item) return;
+  function restoreFromHistory(item: typeof refineHistory[number]) {
     setRecord(item.record);
     setCandidatePreviews(item.previews);
-    setFestivalId(item.festival);
-    setQuickPick(item.quickPick);
-    setDescription(item.prompt);
+    setSelectedPath(item.record.result?.selectedPath ?? item.record.result?.candidates?.[0] ?? null);
+    setShowRefinePanel(false);
   }
 
   return (
@@ -593,8 +614,8 @@ export function GeneratePage() {
         <aside className="history-card">
           <div className="history-head">
             <div>
-              <h2>Recent Ding Ding Cat generations</h2>
-              <div className="count"><span>{history.length}</span> items</div>
+              <h2>Refine History</h2>
+              <div className="count"><span>{refineHistory.length}</span> items</div>
             </div>
           </div>
 
@@ -622,14 +643,25 @@ export function GeneratePage() {
             ) : null}
           </div>
 
-          {history.length === 0 ? (
-            <div className="empty-history">No generations yet. Your Ding Ding Cat results will appear here as clickable thumbnails.</div>
+          {refineHistory.length === 0 ? (
+            <div className="empty-history">Refined images will appear here. Use the Refine button to iterate on your design.</div>
           ) : (
-            <div className="thumb-grid">
-              {history.map((item, index) => (
-                <button className="thumb" type="button" key={item.time} onClick={() => openHistory(index)} aria-label={`Open ${item.prompt}`}>
-                  <div className="mini" />
-                  <div className="thumb-label">{esc(item.prompt.slice(0, 40))}{item.prompt.length > 40 ? "…" : ""}</div>
+            <div className="refine-grid">
+              {refineHistory.map((item) => (
+                <button
+                  className="refine-thumb"
+                  key={item.time}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => restoreFromHistory(item)}
+                >
+                  <img
+                    src={item.previewUrl}
+                    alt={item.description}
+                    onDoubleClick={(e) => { e.stopPropagation(); setLightboxImage(item.previewUrl); }}
+                  />
+                  <div className="thumb-label">{esc(item.description.slice(0, 25))}{item.description.length > 25 ? "…" : ""}</div>
+                  <div className="thumb-subtitle">{esc(item.subtitle.slice(0, 30))}{item.subtitle.length > 30 ? "…" : ""}</div>
                 </button>
               ))}
             </div>
