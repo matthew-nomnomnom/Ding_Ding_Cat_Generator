@@ -1,4 +1,3 @@
-import type { Response } from "express";
 import { createStickerSchema } from "@sticker-platform/shared";
 import { Router } from "express";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -20,29 +19,6 @@ import { readRuntimeBlob, uploadRuntimeReferenceBlob } from "../services/runtime
 
 type StickerRecord = Awaited<ReturnType<typeof getStickerRecord>> extends infer T ? NonNullable<T> : never;
 
-function writeSSE(res: Response, event: Record<string, unknown>): void {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
-}
-
-function startSSE(res: Response): () => void {
-  res.set({
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-  res.flushHeaders?.();
-  writeSSE(res, { type: "start" });
-
-  const keepAlive = setInterval(() => {
-    res.write(": keep-alive\n\n");
-  }, 10_000);
-  const stopKeepAlive = () => clearInterval(keepAlive);
-  res.on("close", stopKeepAlive);
-  res.on("finish", stopKeepAlive);
-
-  return stopKeepAlive;
-}
-
 function logStickerRouteStep(step: string, fields: Record<string, string | number | boolean | undefined> = {}): void {
   const details = Object.entries(fields)
     .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
@@ -59,12 +35,45 @@ function logStickerRouteError(step: string, error: unknown, fields: Record<strin
   console.error(`[sticker-route] ${step} ${new Date().toISOString()}${details ? ` ${details}` : ""}`, error);
 }
 
-function sendSSEError(res: Response, error: unknown, fallbackMessage: string): void {
-  console.error("Sticker API stream error", error);
-  const message = error instanceof Error ? error.message : fallbackMessage;
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
-  writeSSE(res, { type: "error", message });
-  res.end();
+function startBackgroundGeneration(
+  record: StickerRecord,
+  options: Parameters<typeof generateSticker>[1],
+  mode: "generate" | "refine",
+): void {
+  logStickerRouteStep("background_generation_started", {
+    recordId: record.id,
+    mode,
+    count: config.imageGenerationCandidateCount,
+    refinement: Boolean(options?.refinementRequirement),
+  });
+
+  void (async () => {
+    try {
+      const result = await generateSticker(record, options);
+      await updateStickerRecord(record.id, {
+        status: "generated",
+        result,
+        error: undefined,
+      });
+      logStickerRouteStep("background_generation_completed", {
+        recordId: record.id,
+        mode,
+        candidates: result.candidates?.length ?? 0,
+      });
+    } catch (error) {
+      logStickerRouteError("background_generation_failed", error, { recordId: record.id, mode });
+      await updateStickerRecord(record.id, {
+        status: "failed",
+        error: getErrorMessage(error),
+      }).catch((updateError) => {
+        logStickerRouteError("background_generation_status_update_failed", updateError, { recordId: record.id, mode });
+      });
+    }
+  })();
 }
 
 export const stickersRouter = Router();
@@ -315,38 +324,21 @@ stickersRouter.post("/:id/generate", async (req, res, next) => {
       }
     }
 
-    const stopSSEKeepAlive = startSSE(res);
-
     const routeStartedAt = Date.now();
     logStickerRouteStep("generate_request_accepted", { recordId: record.id, theme: record.theme });
     await deleteStickerRuntimeAssets(record.id);
-    await updateStickerRecord(record.id, { status: "generating" });
+    const generatingRecord = await updateStickerRecord(record.id, { status: "generating", error: undefined, result: undefined });
     logStickerRouteStep("generate_record_marked_generating", { recordId: record.id });
-    const result = await generateSticker(record, {
+    startBackgroundGeneration(record, {
       count: config.imageGenerationCandidateCount,
       referenceImagePath: input.referenceImagePath,
       referenceImageUrl: input.referenceImageUrl,
-      onProgress: (current, total, candidatePath) => {
-        writeSSE(res, { type: "progress", current, total, candidate: candidatePath });
-        logStickerRouteStep("generate_sse_progress_sent", { recordId: record.id, candidate: `${current}/${total}` });
-      },
-    });
-    const updated = await updateStickerRecord(record.id, {
-      status: "generated",
-      result,
-    });
-
-    writeSSE(res, { type: "done", record: updated });
-    logStickerRouteStep("generate_completed", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
-    stopSSEKeepAlive();
-    res.end();
+    }, "generate");
+    logStickerRouteStep("generate_start_response_sent", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
+    res.status(202).json(generatingRecord);
   } catch (error) {
     logStickerRouteError("generate_failed", error, { recordId: req.params.id });
-    if (res.headersSent) {
-      sendSSEError(res, error, "Generation failed");
-    } else {
-      next(error);
-    }
+    next(error);
   }
 });
 
@@ -362,44 +354,28 @@ stickersRouter.post("/:id/refine", async (req, res, next) => {
 
     assertGeneratedPath(input.selectedPath);
 
-    const stopSSEKeepAlive = startSSE(res);
-
     const routeStartedAt = Date.now();
     logStickerRouteStep("refine_request_accepted", { recordId: record.id });
     await deleteStickerRuntimeAssets(record.id);
-    await updateStickerRecord(record.id, {
+    const generatingRecord = await updateStickerRecord(record.id, {
       status: "generating",
+      error: undefined,
       result: record.result ? { ...record.result, selectedPath: input.selectedPath } : undefined,
     });
     logStickerRouteStep("refine_record_marked_generating", { recordId: record.id });
-    const result = await generateSticker(record, {
+    startBackgroundGeneration(record, {
       count: config.imageGenerationCandidateCount,
       selectedImagePath: input.selectedPath,
       selectedImageUrl: record.result?.candidateUrls?.[input.selectedPath],
       refinementRequirement: input.requirement,
       referenceImagePath: input.referenceImagePath,
       referenceImageUrl: input.referenceImageUrl,
-      onProgress: (current, total, candidatePath) => {
-        writeSSE(res, { type: "progress", current, total, candidate: candidatePath });
-        logStickerRouteStep("refine_sse_progress_sent", { recordId: record.id, candidate: `${current}/${total}` });
-      },
-    });
-    const updated = await updateStickerRecord(record.id, {
-      status: "generated",
-      result,
-    });
-
-    writeSSE(res, { type: "done", record: updated });
-    logStickerRouteStep("refine_completed", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
-    stopSSEKeepAlive();
-    res.end();
+    }, "refine");
+    logStickerRouteStep("refine_start_response_sent", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
+    res.status(202).json(generatingRecord);
   } catch (error) {
     logStickerRouteError("refine_failed", error, { recordId: req.params.id });
-    if (res.headersSent) {
-      sendSSEError(res, error, "Refinement failed");
-    } else {
-      next(error);
-    }
+    next(error);
   }
 });
 

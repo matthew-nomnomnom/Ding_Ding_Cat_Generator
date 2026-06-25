@@ -10,6 +10,7 @@ const originalEnv = {
   NANO_BANANA_API_URL: process.env.NANO_BANANA_API_URL,
   NANO_BANANA_MODEL: process.env.NANO_BANANA_MODEL,
   AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+  IMAGE_GENERATION_CANDIDATE_COUNT: process.env.IMAGE_GENERATION_CANDIDATE_COUNT,
 };
 
 function restoreEnv(): void {
@@ -52,5 +53,41 @@ describe("config", () => {
 
     assert.equal(config.imageGenerationApiUrl, "https://generic.example/v1");
     assert.equal(config.imageGenerationModel, "openai/gpt-image-2");
+  });
+
+  test("uses direct OpenAI image API by default when OPENAI_API_KEY is selected", async () => {
+    process.env.IMAGE_GENERATION_API_KEY = "";
+    process.env.IMAGE_GENERATION_API_URL = "";
+    process.env.OPENAI_API_KEY = "openai-key";
+    process.env.NANO_BANANA_API_KEY = "";
+    process.env.NANO_BANANA_API_URL = "";
+    process.env.AI_GATEWAY_API_KEY = "";
+
+    const { config } = await loadConfig();
+
+    assert.equal(config.imageGenerationApiKey, "openai-key");
+    assert.equal(config.imageGenerationApiUrl, "https://api.openai.com/v1");
+  });
+
+  test("keeps Vercel AI Gateway default when AI_GATEWAY_API_KEY is selected", async () => {
+    process.env.IMAGE_GENERATION_API_KEY = "";
+    process.env.IMAGE_GENERATION_API_URL = "";
+    process.env.OPENAI_API_KEY = "";
+    process.env.NANO_BANANA_API_KEY = "";
+    process.env.NANO_BANANA_API_URL = "";
+    process.env.AI_GATEWAY_API_KEY = "gateway-key";
+
+    const { config } = await loadConfig();
+
+    assert.equal(config.imageGenerationApiKey, "gateway-key");
+    assert.equal(config.imageGenerationApiUrl, "https://ai-gateway.vercel.sh/v1");
+  });
+
+  test("generates five candidates by default", async () => {
+    process.env.IMAGE_GENERATION_CANDIDATE_COUNT = "";
+
+    const { config } = await loadConfig();
+
+    assert.equal(config.imageGenerationCandidateCount, 5);
   });
 });

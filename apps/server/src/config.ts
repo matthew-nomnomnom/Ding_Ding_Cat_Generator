@@ -17,19 +17,24 @@ function firstNonEmpty(...values: Array<string | undefined>): string {
   return values.find((value) => value !== undefined && value !== "") ?? "";
 }
 
+const imageGenerationApiKey = firstNonEmpty(
+  process.env.IMAGE_GENERATION_API_KEY,
+  process.env.OPENAI_API_KEY,
+  process.env.NANO_BANANA_API_KEY,
+  process.env.AI_GATEWAY_API_KEY,
+);
+const imageGenerationApiUrl = firstNonEmpty(process.env.IMAGE_GENERATION_API_URL, process.env.NANO_BANANA_API_URL)
+  || (imageGenerationApiKey && imageGenerationApiKey === process.env.AI_GATEWAY_API_KEY
+    ? "https://ai-gateway.vercel.sh/v1"
+    : "https://api.openai.com/v1");
+
 export const config = {
   port: Number(process.env.SERVER_PORT ?? 4000),
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
-  imageGenerationApiKey: firstNonEmpty(
-    process.env.IMAGE_GENERATION_API_KEY,
-    process.env.OPENAI_API_KEY,
-    process.env.NANO_BANANA_API_KEY,
-    process.env.AI_GATEWAY_API_KEY,
-  ),
-  imageGenerationApiUrl:
-    firstNonEmpty(process.env.IMAGE_GENERATION_API_URL, process.env.NANO_BANANA_API_URL) || "https://ai-gateway.vercel.sh/v1",
+  imageGenerationApiKey,
+  imageGenerationApiUrl,
   imageGenerationModel: firstNonEmpty(process.env.IMAGE_GENERATION_MODEL, process.env.NANO_BANANA_MODEL) || "openai/gpt-image-2",
-  imageGenerationCandidateCount: Number(process.env.IMAGE_GENERATION_CANDIDATE_COUNT ?? 1),
+  imageGenerationCandidateCount: Number(firstNonEmpty(process.env.IMAGE_GENERATION_CANDIDATE_COUNT) || 5),
   notionToken: process.env.NOTION_TOKEN ?? "",
   notionDatabaseId: process.env.NOTION_DATABASE_ID ?? "",
   blobReadWriteToken: process.env.BLOB_READ_WRITE_TOKEN ?? "",
