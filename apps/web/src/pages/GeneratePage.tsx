@@ -268,7 +268,9 @@ export function GeneratePage() {
 
       let refPath: string | undefined;
       let refUrl: string | undefined;
+      let historyPreviewUrl: string | null = null;
       if (pendingPhoto) {
+        historyPreviewUrl = photoPreview;
         const uploaded = await uploadReferenceImage(pendingPhoto.fileName, pendingPhoto.dataUrl, theme, prompt);
         refPath = uploaded.path;
         refUrl = uploaded.blobPathname;
@@ -286,14 +288,16 @@ export function GeneratePage() {
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
 
       const firstCandidate = generatedRecord.result?.candidates?.[0];
-      const firstPreview = firstCandidate
+      const firstCandidatePreview = firstCandidate
         ? (previewsRef.current[firstCandidate] || getCandidatePreviewUrl(generatedRecord, firstCandidate, {}))
         : null;
-      if (firstPreview) {
+      const previewUrl = historyPreviewUrl || firstCandidatePreview;
+      const isReference = Boolean(historyPreviewUrl);
+      if (previewUrl) {
         setRefineHistory((prev) => [{
-          previewUrl: firstPreview,
+          previewUrl,
           description: prompt,
-          subtitle: prompt,
+          subtitle: isReference ? "Reference image" : prompt,
           time: Date.now(),
           record: generatedRecord,
           previews: { ...previewsRef.current },
