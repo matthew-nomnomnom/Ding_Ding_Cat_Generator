@@ -42,6 +42,7 @@ export const config = {
   imageGenerationCandidateCount: Number(firstNonEmpty(process.env.IMAGE_GENERATION_CANDIDATE_COUNT) || 5),
   imageGenerationConcurrency: positiveNumberOrDefault(firstNonEmpty(process.env.IMAGE_GENERATION_CONCURRENCY), 2),
   imageGenerationBaselineReferenceCount: positiveNumberOrDefault(firstNonEmpty(process.env.IMAGE_GENERATION_BASELINE_REFERENCE_COUNT), 1),
+  canonicalReferenceBlobPathname: firstNonEmpty(process.env.CANONICAL_REFERENCE_BLOB_PATHNAME) || "baseline/ding-ding-cat/turnaround.png",
   notionToken: process.env.NOTION_TOKEN ?? "",
   notionDatabaseId: process.env.NOTION_DATABASE_ID ?? "",
   blobReadWriteToken: process.env.BLOB_READ_WRITE_TOKEN ?? "",

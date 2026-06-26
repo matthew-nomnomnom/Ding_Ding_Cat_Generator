@@ -13,6 +13,7 @@ const originalEnv = {
   IMAGE_GENERATION_CANDIDATE_COUNT: process.env.IMAGE_GENERATION_CANDIDATE_COUNT,
   IMAGE_GENERATION_CONCURRENCY: process.env.IMAGE_GENERATION_CONCURRENCY,
   IMAGE_GENERATION_BASELINE_REFERENCE_COUNT: process.env.IMAGE_GENERATION_BASELINE_REFERENCE_COUNT,
+  CANONICAL_REFERENCE_BLOB_PATHNAME: process.env.CANONICAL_REFERENCE_BLOB_PATHNAME,
 };
 
 function restoreEnv(): void {
@@ -123,5 +124,21 @@ describe("config", () => {
     const { config } = await loadConfig();
 
     assert.equal(config.imageGenerationBaselineReferenceCount, 1);
+  });
+
+  test("uses canonical reference blob pathname override", async () => {
+    process.env.CANONICAL_REFERENCE_BLOB_PATHNAME = "custom/turnaround.png";
+
+    const { config } = await loadConfig();
+
+    assert.equal(config.canonicalReferenceBlobPathname, "custom/turnaround.png");
+  });
+
+  test("uses default canonical reference blob pathname", async () => {
+    process.env.CANONICAL_REFERENCE_BLOB_PATHNAME = "";
+
+    const { config } = await loadConfig();
+
+    assert.equal(config.canonicalReferenceBlobPathname, "baseline/ding-ding-cat/turnaround.png");
   });
 });
