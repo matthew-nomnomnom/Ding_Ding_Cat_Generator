@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { StickerRecord } from "@sticker-platform/shared";
-import { acceptSticker, createSticker, generateSticker, refineSticker, rejectSticker, uploadReferenceImage } from "../lib/api";
+import { acceptSticker, createSticker, generateSticker, listGallery, refineSticker, rejectSticker, removeGalleryItem, uploadReferenceImage } from "../lib/api";
+import type { GalleryItem } from "../lib/api";
 
-const FESTIVALS = [
+export const FESTIVALS = [
   { id: "general", label: "General", desc: "general TramPlus sticker with Hong Kong tram culture, city motion, and clean brand energy",
     picks: [
       ["Classic Tram Ride", "riding happily on a classic Hong Kong tram with confident energy"],
@@ -128,6 +129,7 @@ interface HistoryItem {
 }
 
 export function GeneratePage() {
+  const [pageView, setPageView] = useState<"generator" | "gallery">("generator");
   const [festivalId, setFestivalId] = useState("");
   const [quickPick, setQuickPick] = useState("");
   const [format, setFormat] = useState<"SVG" | "GIF">("SVG");
@@ -151,6 +153,96 @@ export function GeneratePage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const dragCounterRef = useRef(0);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const stripRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const [acceptedRecords, setAcceptedRecords] = useState<GalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
+  const [activeThemeTab, setActiveThemeTab] = useState("all");
+  const [galleryLightbox, setGalleryLightbox] = useState<GalleryItem | null>(null);
+
+  const galleryThemes = ["all", ...FESTIVALS.map((f) => f.id)];
+
+  const groupedByTheme: Record<string, GalleryItem[]> = {};
+  for (const r of acceptedRecords) {
+    if (!groupedByTheme[r.theme]) groupedByTheme[r.theme] = [];
+    groupedByTheme[r.theme].push(r);
+  }
+
+  const themeRows = FESTIVALS.filter((f) => groupedByTheme[f.id] && groupedByTheme[f.id].length > 0);
+
+  const filteredAccepted =
+    activeThemeTab === "all"
+      ? acceptedRecords
+      : acceptedRecords.filter((r) => r.theme === activeThemeTab);
+
+  function getGalleryImageUrl(rec: GalleryItem): string | null {
+    if (rec.imageUrl) return rec.imageUrl;
+    if (!rec.localPath) return null;
+    return getGeneratedAssetUrl(rec.localPath);
+  }
+
+  function getGalleryThemeLabel(themeId: string): string {
+    const f = FESTIVALS.find((f) => f.id === themeId);
+    return f?.label ?? themeId;
+  }
+
+  function handleDownload(url: string, filename: string) {
+    if (url.startsWith("data:")) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
+    const proxyUrl = `${apiBase}/api/stickers/gallery/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+    const a = document.createElement("a");
+    a.href = proxyUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  async function handleDeleteGalleryItem(item: GalleryItem) {
+    if (!item.localPath) return;
+    try {
+      await removeGalleryItem(item.localPath);
+      setAcceptedRecords((prev) => prev.filter((r) => r.id !== item.id));
+    } catch {
+      setAcceptedRecords((prev) => prev.filter((r) => r.id !== item.id));
+    }
+    setGalleryLightbox(null);
+  }
+
+  async function loadGallery() {
+    try {
+      setGalleryLoading(true);
+      setGalleryError(null);
+      const items = await listGallery();
+      setAcceptedRecords(items);
+    } catch (e) {
+      setGalleryError(e instanceof Error ? e.message : "Failed to load accepted stickers");
+    } finally {
+      setGalleryLoading(false);
+    }
+  }
+
+  function scrollStrip(themeId: string, direction: "left" | "right") {
+    const el = stripRefs.current[themeId];
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.75;
+    el.scrollBy({ left: direction === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
+  }
+
+  function switchToGallery() {
+    setPageView("gallery");
+    setActiveThemeTab("all");
+    loadGallery();
+  }
 
   const currentFestival = FESTIVALS.find((f) => f.id === festivalId) ?? FESTIVALS[0];
   const selectedCandidate = selectedPath ?? record?.result?.selectedPath ?? record?.result?.candidates?.[0] ?? null;
@@ -414,7 +506,7 @@ export function GeneratePage() {
       {isDraggingFile ? (
         <div className="drop-overlay">
           <div className="drop-box">
-            <div className="drop-icon">📁</div>
+            <div className="drop-icon">Drop</div>
             <p>Drop image here to use as reference</p>
           </div>
         </div>
@@ -422,11 +514,14 @@ export function GeneratePage() {
       <nav className="topbar">
         <img className="brand-logo" src="/TramPlus_4C_BLK-01.png" alt="TramPlus" />
         <div className="topbar-meta">
-          <span>AI Image Generator</span>
+          <button type="button" className={pageView === "generator" ? "topbar-nav-link active" : "topbar-nav-link"} onClick={() => setPageView("generator")}>Generator</button>
+          <button type="button" className={pageView === "gallery" ? "topbar-nav-link active" : "topbar-nav-link"} onClick={switchToGallery}>Gallery</button>
         </div>
       </nav>
 
-      <section className="oliver-grid">
+      {pageView === "generator" ? (
+        <>
+          <section className="oliver-grid">
         <section className="workbench">
           <span className="eyebrow">Create an image</span>
           <h2 className="card-title">Generate a Ding Ding Cat sticker</h2>
@@ -444,20 +539,6 @@ export function GeneratePage() {
           <div className="gen-row">
             <div className="gen-options">
               <div className="gen-field">
-                <span>Quick Pick</span>
-                <select
-                  className="gen-select"
-                  value={quickPick}
-                  onChange={(e) => handleQuickPickChange(e.target.value)}
-                  disabled={busy}
-                >
-                  <option value="">Choose a quick pick</option>
-                  {currentFestival.picks.map(([label, prompt]) => (
-                    <option key={label} value={prompt}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="gen-field">
                 <span>Festival</span>
                 <select
                   className="gen-select"
@@ -468,6 +549,20 @@ export function GeneratePage() {
                   <option value="">Festival theme</option>
                   {FESTIVALS.map((f) => (
                     <option key={f.id} value={f.id}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="gen-field">
+                <span>Quick Pick</span>
+                <select
+                  className="gen-select"
+                  value={quickPick}
+                  onChange={(e) => handleQuickPickChange(e.target.value)}
+                  disabled={busy}
+                >
+                  <option value="">Choose a quick pick</option>
+                  {currentFestival.picks.map(([label, prompt]) => (
+                    <option key={label} value={prompt}>{label}</option>
                   ))}
                 </select>
               </div>
@@ -492,7 +587,7 @@ export function GeneratePage() {
                 </>
               ) : (
                 <>
-                  <span>✦</span>
+                  <span>+</span>
                   <span>Generate</span>
                 </>
               )}
@@ -591,6 +686,7 @@ export function GeneratePage() {
         </section>
 
         <aside className="history-card">
+          <span className="eyebrow">History</span>
           <div className="history-head">
             <div>
               <h2>Recent Ding Ding Cat generations</h2>
@@ -636,13 +732,194 @@ export function GeneratePage() {
           )}
         </aside>
       </section>
+        </>
+      ) : (
+        <section className="gallery-section">
+          <div className="gallery-head">
+            <span className="eyebrow">Gallery</span>
+            <h2 className="card-title">Accepted Stickers</h2>
+            <p className="helper-text">
+              {acceptedRecords.length} accepted sticker{acceptedRecords.length !== 1 ? "s" : ""} across{" "}
+              {new Set(acceptedRecords.map((r) => r.theme)).size} theme{new Set(acceptedRecords.map((r) => r.theme)).size !== 1 ? "s" : ""}
+            </p>
+          </div>
+
+          <div className="gallery-layout">
+            <div className="theme-tabs">
+              {galleryThemes.map((tabId) => (
+                <button
+                  key={tabId}
+                  className={activeThemeTab === tabId ? "theme-tab active" : "theme-tab"}
+                  type="button"
+                  onClick={() => setActiveThemeTab(tabId)}
+                >
+                  {tabId === "all" ? "All" : getGalleryThemeLabel(tabId)}
+                  <span className="tab-count">
+                    {tabId === "all"
+                      ? acceptedRecords.length
+                      : acceptedRecords.filter((r) => r.theme === tabId).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {galleryLoading ? (
+              <div className="loading-state">
+                <div className="spinner" />
+                <p>Loading accepted stickers...</p>
+              </div>
+            ) : galleryError ? (
+              <p className="form-message error">{galleryError}</p>
+            ) : filteredAccepted.length === 0 ? (
+              <div className="empty-state gallery-empty">
+                <div className="empty-icon">T+</div>
+                <p>
+                  {activeThemeTab === "all"
+                    ? "No accepted stickers yet. Generate and accept some stickers to see them here."
+                    : `No accepted stickers in ${getGalleryThemeLabel(activeThemeTab)} yet.`}
+                </p>
+              </div>
+            ) : activeThemeTab === "all" ? (
+              <div className="category-rows">
+                {themeRows.map((festival) => {
+                  const photos = groupedByTheme[festival.id] || [];
+                  return (
+                    <div key={festival.id} className="category-row-panel">
+                      <div className="category-row-head">
+                        <button
+                          type="button"
+                          className="category-row-label"
+                          onClick={() => setActiveThemeTab(festival.id)}
+                        >
+                          {festival.label}
+                          <span className="row-count">{photos.length}</span>
+                        </button>
+                      </div>
+                      <div className="strip-scroll-zone">
+                        <button
+                          type="button"
+                          className="row-arrow row-arrow-left"
+                          onClick={() => scrollStrip(festival.id, "left")}
+                          aria-label={`Scroll ${festival.label} left`}
+                        >
+                          &lt;
+                        </button>
+                        <div
+                          className="accepted-strip"
+                          ref={(el) => { stripRefs.current[festival.id] = el; }}
+                        >
+                          {photos.map((rec) => {
+                            const imgUrl = getGalleryImageUrl(rec);
+                            return (
+                              <button
+                                key={rec.id}
+                                className="strip-card"
+                                type="button"
+                                onClick={() => setActiveThemeTab(rec.theme)}
+                                aria-label={`View ${rec.description} in ${festival.label}`}
+                              >
+                                {imgUrl ? (
+                                  <img src={imgUrl} alt={rec.description} loading="lazy" />
+                                ) : (
+                                  <div className="accepted-placeholder">No image</div>
+                                )}
+                                {imgUrl ? (
+                                  <button
+                                    className="card-download-btn"
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
+                                    title="Download"
+                                    aria-label="Download image"
+                                  >
+                                    Download
+                                  </button>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          type="button"
+                          className="row-arrow row-arrow-right"
+                          onClick={() => scrollStrip(festival.id, "right")}
+                          aria-label={`Scroll ${festival.label} right`}
+                        >
+                          &gt;
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {themeRows.length === 0 ? (
+                  <div className="empty-state gallery-empty">
+                    <div className="empty-icon">T+</div>
+                    <p>No accepted stickers yet. Generate and accept some stickers to see them here.</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="accepted-grid">
+                {filteredAccepted.map((rec) => {
+                  const imgUrl = getGalleryImageUrl(rec);
+                  return (
+                    <button
+                      key={rec.id}
+                      className="accepted-card"
+                      type="button"
+                      onClick={() => setGalleryLightbox(rec)}
+                      aria-label={`View ${rec.description}`}
+                    >
+                      {imgUrl ? (
+                        <img src={imgUrl} alt={rec.description} loading="lazy" />
+                      ) : (
+                        <div className="accepted-placeholder">No image</div>
+                      )}
+                      <div className="accepted-label">
+                        {rec.description.slice(0, 40)}
+                        {rec.description.length > 40 ? "…" : ""}
+                      </div>
+                      {imgUrl ? (
+                        <button
+                          className="card-download-btn"
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
+                          title="Download"
+                          aria-label="Download image"
+                        >
+                          Download
+                        </button>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</footer>
 
       {lightboxImage ? (
         <div className="lightbox-overlay" onClick={() => setLightboxImage(null)}>
-          <button className="lightbox-close" onClick={() => setLightboxImage(null)} aria-label="Close lightbox">✕</button>
+          <button className="lightbox-close" onClick={() => setLightboxImage(null)} aria-label="Close lightbox">X</button>
+          <div className="lightbox-actions">
+            <button className="lightbox-download" type="button" onClick={() => lightboxImage && handleDownload(lightboxImage, "sticker.png")}>Download</button>
+          </div>
           <img className="lightbox-image" src={lightboxImage} alt="Enlarged sticker" onClick={(e) => e.stopPropagation()} />
+        </div>
+      ) : null}
+
+      {galleryLightbox ? (
+        <div className="lightbox-overlay" onClick={() => setGalleryLightbox(null)}>
+          <button className="lightbox-close" onClick={() => setGalleryLightbox(null)} aria-label="Close lightbox">X</button>
+          <div className="lightbox-actions">
+            <button className="lightbox-download" type="button" onClick={() => galleryLightbox.imageUrl && handleDownload(galleryLightbox.imageUrl, galleryLightbox.description + ".png")}>Download</button>
+            <button className="lightbox-delete" type="button" onClick={() => handleDeleteGalleryItem(galleryLightbox)}>Delete</button>
+          </div>
+          {galleryLightbox.imageUrl ? (
+            <img className="lightbox-image" src={galleryLightbox.imageUrl} alt={galleryLightbox.description} onClick={(e) => e.stopPropagation()} />
+          ) : null}
         </div>
       ) : null}
 

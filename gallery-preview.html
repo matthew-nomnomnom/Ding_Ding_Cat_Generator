@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ding Ding Cat — Accepted Photos Gallery</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: linear-gradient(180deg, #fbfcfb 0%, #f6f8f7 100%);
+    color: #121714;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Topbar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(47,139,95,0.16);
+    border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(15,25,18,0.06);
+    backdrop-filter: blur(18px);
+  }
+  .brand-logo { width: 178px; height: auto; }
+
+  .topbar-nav { display: flex; gap: 8px; }
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #66716b;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { color: #163f31; background: rgba(47,139,95,0.06); }
+  .nav-btn.active {
+    background: #fff;
+    border-color: rgba(47,139,95,0.16);
+    color: #1f5b45;
+    box-shadow: 0 8px 20px rgba(15,25,18,0.04);
+  }
+
+  /* Page */
+  .page-shell {
+    max-width: 1240px;
+    margin: 26px auto auto;
+    padding: 0 20px 40px;
+  }
+
+  /* Section head */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #1f5b45;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 8px; height: 8px;
+    background: linear-gradient(180deg, oklch(78% 0.18 120), #55b87d);
+    border-radius: 999px;
+  }
+  .card-title {
+    color: #121714;
+    font-size: 30px;
+    font-weight: 750;
+    letter-spacing: -0.025em;
+    margin: 12px 0 6px;
+  }
+  .helper-text {
+    color: #66716b;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  /* Theme tabs - vertical sidebar */
+  .gallery-layout { display: flex; gap: 24px; align-items: flex-start; }
+  .theme-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background: rgba(255,255,255,0.65);
+    border: 1px solid rgba(22,63,49,0.06);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+    width: 210px;
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+  }
+  .theme-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+    padding: 11px 16px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: transparent;
+    color: #66716b;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    white-space: nowrap;
+    width: 100%;
+    text-align: left;
+  }
+  .theme-tab:hover { color: #163f31; background: rgba(47,139,95,0.06); }
+  .theme-tab.active {
+    background: #fff;
+    border-color: rgba(47,139,95,0.16);
+    color: #1f5b45;
+    box-shadow: 0 4px 14px rgba(15,25,18,0.06);
+  }
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px; height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(47,139,95,0.09);
+    color: #1f5b45;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .theme-tab.active .tab-count { background: rgba(47,139,95,0.14); }
+
+  /* Gallery grid */
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    flex: 1;
+  }
+
+  /* Horizontal scroll rows for All tab */
+  .category-rows { display: flex; flex-direction: column; gap: 28px; flex: 1; min-width: 0; }
+  .category-row-panel {
+    background: #fff; border: 1px solid #e3e9e5; border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(15,25,18,0.05); overflow: visible;
+  }
+  .category-row-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-bottom: 1px solid #e3e9e5;
+  }
+  .category-row-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 17px; font-weight: 750; color: #121714;
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font-family: inherit; letter-spacing: -0.02em; transition: color 0.16s;
+  }
+  .category-row-label:hover { color: #1f5b45; }
+  .row-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+    background: rgba(47,139,95,0.09); color: #1f5b45; font-size: 12px; font-weight: 800;
+  }
+
+  /* Strip scroll zone with side arrows */
+  .strip-scroll-zone { position: relative; padding: 0 40px; }
+  .strip-scroll-zone .accepted-strip {
+    display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    padding: 14px 0;
+    scrollbar-width: auto; scrollbar-color: #d6e2db #f4f6f3;
+  }
+  .strip-scroll-zone .accepted-strip::-webkit-scrollbar { height: 8px; }
+  .strip-scroll-zone .accepted-strip::-webkit-scrollbar-track {
+    background: #f4f6f3; border-radius: 999px; margin: 0 10px;
+  }
+  .strip-scroll-zone .accepted-strip::-webkit-scrollbar-thumb {
+    background: #d6e2db; border-radius: 999px;
+  }
+
+  .row-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid #d6e2db; background: #fff; color: #1f5b45;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+    transition: all 0.16s; padding: 0; font-family: inherit;
+    box-shadow: 0 4px 14px rgba(15,25,18,0.08); z-index: 2;
+  }
+  .row-arrow:hover { background: #1f5b45; border-color: #1f5b45; color: #fff; box-shadow: 0 6px 20px rgba(31,91,69,0.25); }
+  .row-arrow-left { left: 0; }
+  .row-arrow-right { right: 0; }
+
+  .strip-card {
+    position: relative; flex-shrink: 0; width: 180px; aspect-ratio: 1/1;
+    border: 1px solid #d6e2db; border-radius: 20px; overflow: hidden;
+    background: #fff; box-shadow: 0 10px 24px rgba(15,25,18,0.05);
+    cursor: pointer; padding: 0; scroll-snap-align: start;
+    transition: transform 0.16s, box-shadow 0.16s;
+  }
+  .strip-card:hover { transform: translateY(-2px); box-shadow: 0 16px 32px rgba(15,25,18,0.08); }
+  .strip-card img { width: 100%; height: 100%; object-fit: contain; padding: 14px; background: #fff; }
+  .accepted-strip-wrap { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .accepted-strip-label { color: #66716b; font-size: 13px; font-weight: 650; }
+  .accepted-strip {
+    display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    scrollbar-width: thin; scrollbar-color: #d6e2db transparent;
+  }
+  .accepted-strip::-webkit-scrollbar { height: 6px; }
+  .accepted-strip::-webkit-scrollbar-track { background: transparent; }
+  .accepted-strip::-webkit-scrollbar-thumb { background: #d6e2db; border-radius: 999px; }
+  .gallery-card {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border: 1px solid #d6e2db;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(15,25,18,0.05);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.16s, box-shadow 0.16s;
+  }
+  .gallery-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px rgba(15,25,18,0.08);
+  }
+  .gallery-card img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 20px;
+    background:
+      linear-gradient(135deg, rgba(47,139,95,0.05), rgba(255,255,255,0.75)),
+      repeating-linear-gradient(0deg, rgba(22,63,49,0.03) 0 1px, transparent 1px 20px),
+      repeating-linear-gradient(90deg, rgba(22,63,49,0.03) 0 1px, transparent 1px 20px);
+  }
+  .card-label {
+    position: absolute;
+    left: 10px; right: 10px; bottom: 10px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(14px);
+    font-size: 12px; font-weight: 650;
+    color: #163f31;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox-close {
+    position: absolute; right: 24px; top: 24px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .lightbox img {
+    max-width: 90vw; max-height: 90vh;
+    object-fit: contain;
+  }
+
+  /* Empty state */
+  .empty-state {
+    min-height: 300px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    border: 1px solid #d6e2db;
+    border-radius: 24px;
+    background:
+      linear-gradient(135deg, rgba(47,139,95,0.05), rgba(255,255,255,0.75)),
+      repeating-linear-gradient(0deg, rgba(22,63,49,0.03) 0 1px, transparent 1px 20px),
+      repeating-linear-gradient(90deg, rgba(22,63,49,0.03) 0 1px, transparent 1px 20px);
+    padding: 40px;
+    color: #66716b;
+    font-size: 15px;
+  }
+  .empty-icon {
+    width: 70px; height: 70px;
+    display: grid; place-items: center;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #fff, #f2f7f4);
+    box-shadow: 0 14px 30px rgba(15,25,18,0.06);
+    color: #1f5b45;
+    font-size: 26px; font-weight: 900;
+    margin-bottom: 14px;
+  }
+
+  .footer {
+    text-align: center;
+    color: #66716b;
+    font-size: 12px;
+    font-weight: 650;
+    margin-top: 28px;
+    padding-bottom: 20px;
+  }
+
+  .gallery-grid { flex: 1; }
+
+  @media (max-width: 720px) {
+    .gallery-layout { flex-direction: column; }
+    .theme-tabs { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; width: 100%; position: static; }
+    .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+    .accepted-strip { padding-bottom: 6px; }
+    .strip-card { width: 150px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <img class="brand-logo" src="https://image-generator-theta-red.vercel.app/TramPlus_4C_BLK-01.png" alt="TramPlus" onerror="this.style.display='none'" />
+  <div class="topbar-nav">
+    <button class="nav-btn" onclick="switchTab('generator')">Generator</button>
+    <button class="nav-btn active" id="galleryTabBtn">Gallery</button>
+  </div>
+</div>
+
+<div class="page-shell" id="galleryView">
+
+  <span class="eyebrow">Gallery</span>
+  <h2 class="card-title">Accepted Stickers</h2>
+  <p class="helper-text">12 accepted stickers across 4 themes</p>
+
+  <!-- Theme tabs (vertical sidebar) -->
+  <div class="gallery-layout">
+    <div class="theme-tabs">
+      <button class="theme-tab active" data-theme="all" onclick="filterTheme('all', this)">All <span class="tab-count">12</span></button>
+      <button class="theme-tab" data-theme="lunar" onclick="filterTheme('lunar', this)">Lunar New Year <span class="tab-count">4</span></button>
+      <button class="theme-tab" data-theme="christmas" onclick="filterTheme('christmas', this)">Christmas <span class="tab-count">3</span></button>
+      <button class="theme-tab" data-theme="halloween" onclick="filterTheme('halloween', this)">Halloween <span class="tab-count">2</span></button>
+      <button class="theme-tab" data-theme="general" onclick="filterTheme('general', this)">General <span class="tab-count">3</span></button>
+      <button class="theme-tab" data-theme="birthday" onclick="filterTheme('birthday', this)">Birthday <span class="tab-count">0</span></button>
+      <button class="theme-tab" data-theme="valentine" onclick="filterTheme('valentine', this)">Valentine <span class="tab-count">0</span></button>
+      <button class="theme-tab" data-theme="midautumn" onclick="filterTheme('midautumn', this)">Mid-Autumn Festival <span class="tab-count">0</span></button>
+      <button class="theme-tab" data-theme="dragonboat" onclick="filterTheme('dragonboat', this)">Dragon Boat Festival <span class="tab-count">0</span></button>
+      <button class="theme-tab" data-theme="easter" onclick="filterTheme('easter', this)">Easter <span class="tab-count">0</span></button>
+    </div>
+
+  <!-- When All tab: category rows -->
+  <div class="category-rows" id="stripView">
+    <div class="category-row-panel">
+      <div class="category-row-head">
+        <button class="category-row-label" onclick="filterTheme('lunar', document.querySelector('[data-theme=lunar]'))">Lunar New Year <span class="row-count">8</span></button>
+      </div>
+      <div class="strip-scroll-zone">
+        <button type="button" class="row-arrow row-arrow-left" onclick="scrollStrip(this, 'left')">&lt;</button>
+        <div class="accepted-strip">
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fef3c7' width='200' height='200'/%3E%3Ccircle cx='100' cy='100' r='40' fill='%23f59e0b'/%3E%3Ctext x='100' y='160' text-anchor='middle' font-size='14' fill='%23924e0f' font-family='sans-serif'%3ELantern%3C/text%3E%3C/svg%3E" alt="Lantern Dance"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fee2e2' width='200' height='200'/%3E%3Crect x='60' y='60' width='80' height='70' rx='5' fill='%23dc2626'/%3E%3Ctext x='100' y='160' text-anchor='middle' font-size='14' fill='%23991b1b' font-family='sans-serif'%3EEnvelope%3C/text%3E%3C/svg%3E" alt="Red Envelope"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fce7f3' width='200' height='200'/%3E%3Cpath d='M30,130 Q100,20 170,130' stroke='%23db2777' stroke-width='4' fill='none'/%3E%3Ccircle cx='100' cy='130' r='8' fill='%23db2777'/%3E%3Ctext x='100' y='160' text-anchor='middle' font-size='14' fill='%239d174b' font-family='sans-serif'%3EDragon%3C/text%3E%3C/svg%3E" alt="Lucky Dragon"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%232d1b69' width='200' height='200'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23fcd34d'/%3E%3Ccircle cx='80' cy='40' r='10' fill='%23f472b6'/%3E%3Ccircle cx='140' cy='60' r='12' fill='%23fcd34d'/%3E%3Ccircle cx='110' cy='90' r='8' fill='%23f472b6'/%3E%3Ccircle cx='40' cy='100' r='10' fill='%23fcd34d'/%3E%3Ctext x='100' y='160' text-anchor='middle' font-size='14' fill='%23c4b5fd' font-family='sans-serif'%3EFireworks%3C/text%3E%3C/svg%3E" alt="Fireworks"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fdf2f8' width='200' height='200'/%3E%3Cpath d='M100,30 L120,120 L180,120 L130,170 L150,260 L100,210 L50,260 L70,170 L20,120 L80,120 Z' fill='%23ec4899'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%239d174d' font-family='sans-serif'%3ECheongsam%3C/text%3E%3C/svg%3E" alt="Cheongsam"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fffbeb' width='200' height='200'/%3E%3Ccircle cx='100' cy='80' r='45' fill='%23fcd34d'/%3E%3Ctext x='100' y='160' text-anchor='middle' font-size='14' fill='%23a16207' font-family='sans-serif'%3ETangyuan%3C/text%3E%3C/svg%3E" alt="Tangyuan"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23faf5ff' width='200' height='200'/%3E%3Ccircle cx='100' cy='90' r='35' fill='%23a855f7'/%3E%3Ctext x='100' y='160' text-anchor='middle' font-size='14' fill='%235b21b6' font-family='sans-serif'%3EOrchid%3C/text%3E%3C/svg%3E" alt="Orchid"></div>
+          <div class="strip-card" onclick="filterTheme('lunar', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fef2f2' width='200' height='200'/%3E%3Crect x='50' y='60' width='100' height='80' rx='10' fill='%23ef4444'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23991b1b' font-family='sans-serif'%3EBlessing%3C/text%3E%3C/svg%3E" alt="Blessing"></div>
+        </div>
+        <button type="button" class="row-arrow row-arrow-right" onclick="scrollStrip(this, 'right')">&gt;</button>
+      </div>
+    </div>
+
+    <div class="category-row-panel">
+      <div class="category-row-head">
+        <button class="category-row-label" onclick="filterTheme('christmas', document.querySelector('[data-theme=christmas]'))">Christmas <span class="row-count">6</span></button>
+      </div>
+      <div class="strip-scroll-zone">
+        <button type="button" class="row-arrow row-arrow-left" onclick="scrollStrip(this, 'left')">&lt;</button>
+        <div class="accepted-strip">
+          <div class="strip-card" onclick="filterTheme('christmas', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23eff6ff' width='200' height='200'/%3E%3Ccircle cx='100' cy='60' r='35' fill='%2360a5fa'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%231e40af' font-family='sans-serif'%3ESanta%3C/text%3E%3C/svg%3E" alt="Santa Hat"></div>
+          <div class="strip-card" onclick="filterTheme('christmas', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23f0fdf4' width='200' height='200'/%3E%3Crect x='50' y='60' width='100' height='80' rx='8' fill='%2322c55e'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23064e3b' font-family='sans-serif'%3EGift%3C/text%3E%3C/svg%3E" alt="Gift Box"></div>
+          <div class="strip-card" onclick="filterTheme('christmas', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23f8fafc' width='200' height='200'/%3E%3Ccircle cx='100' cy='70' r='30' fill='%23e2e8f0'/%3E%3Ccircle cx='100' cy='50' r='22' fill='%23cbd5e1'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23334155' font-family='sans-serif'%3ESnowman%3C/text%3E%3C/svg%3E" alt="Snowman"></div>
+          <div class="strip-card" onclick="filterTheme('christmas', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fffbeb' width='200' height='200'/%3E%3Ccircle cx='100' cy='80' r='40' fill='%23fbbf24'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%2392420e' font-family='sans-serif'%3ECookies%3C/text%3E%3C/svg%3E" alt="Cookies"></div>
+          <div class="strip-card" onclick="filterTheme('christmas', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fdf2f8' width='200' height='200'/%3E%3Ccircle cx='100' cy='100' r='40' fill='%23f9a8d4'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%239d174d' font-family='sans-serif'%3ECaroling%3C/text%3E%3C/svg%3E" alt="Caroling"></div>
+          <div class="strip-card" onclick="filterTheme('christmas', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23e0f2fe' width='200' height='200'/%3E%3Cpath d='M60,180 L100,30 L140,180 Z' fill='%2338bdf8'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23075caf' font-family='sans-serif'%3EReindeer%3C/text%3E%3C/svg%3E" alt="Reindeer"></div>
+        </div>
+        <button type="button" class="row-arrow row-arrow-right" onclick="scrollStrip(this, 'right')">&gt;</button>
+      </div>
+    </div>
+
+    <div class="category-row-panel">
+      <div class="category-row-head">
+        <button class="category-row-label" onclick="filterTheme('halloween', document.querySelector('[data-theme=halloween]'))">Halloween <span class="row-count">4</span></button>
+      </div>
+      <div class="strip-scroll-zone">
+        <button type="button" class="row-arrow row-arrow-left" onclick="scrollStrip(this, 'left')">&lt;</button>
+        <div class="accepted-strip">
+          <div class="strip-card" onclick="filterTheme('halloween', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23312145' width='200' height='200'/%3E%3Ccircle cx='100' cy='90' r='45' fill='%23f97316'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23ffedd5' font-family='sans-serif'%3EPumpkin%3C/text%3E%3C/svg%3E" alt="Pumpkin"></div>
+          <div class="strip-card" onclick="filterTheme('halloween', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%232d1b69' width='200' height='200'/%3E%3Cpath d='M100,30 L70,150 L130,150 Z' fill='%239338ea'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23e9d5ff' font-family='sans-serif'%3EWitch%3C/text%3E%3C/svg%3E" alt="Witch Hat"></div>
+          <div class="strip-card" onclick="filterTheme('halloween', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%231a1a2e' width='200' height='200'/%3E%3Cpath d='M60,100 Q80,30 100,70 Q120,30 140,100 Q120,150 100,130 Q80,150 60,100 Z' fill='%234f46e5'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23c7d2fe' font-family='sans-serif'%3EBat%3C/text%3E%3C/svg%3E" alt="Bat Wings"></div>
+          <div class="strip-card" onclick="filterTheme('halloween', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23222222' width='200' height='200'/%3E%3Ccircle cx='100' cy='90' r='40' fill='%23f8fafc'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23f8fafc' font-family='sans-serif'%3EGhost%3C/text%3E%3C/svg%3E" alt="Ghost"></div>
+        </div>
+        <button type="button" class="row-arrow row-arrow-right" onclick="scrollStrip(this, 'right')">&gt;</button>
+      </div>
+    </div>
+
+    <div class="category-row-panel">
+      <div class="category-row-head">
+        <button class="category-row-label" onclick="filterTheme('general', document.querySelector('[data-theme=general]'))">General <span class="row-count">5</span></button>
+      </div>
+      <div class="strip-scroll-zone">
+        <button type="button" class="row-arrow row-arrow-left" onclick="scrollStrip(this, 'left')">&lt;</button>
+        <div class="accepted-strip">
+          <div class="strip-card" onclick="filterTheme('general', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23f0fdf4' width='200' height='200'/%3E%3Crect x='20' y='80' width='160' height='40' rx='8' fill='%2322c55e'/%3E%3Ccircle cx='40' cy='100' r='10' fill='%23333'/%3E%3Ccircle cx='160' cy='100' r='10' fill='%23333'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23165e37' font-family='sans-serif'%3ETram%3C/text%3E%3C/svg%3E" alt="Tram Ride"></div>
+          <div class="strip-card" onclick="filterTheme('general', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23eff6ff' width='200' height='200'/%3E%3Crect x='40' y='60' width='120' height='80' rx='5' fill='%233b82f6'/%3E%3Crect x='70' y='40' width='60' height='20' fill='%2360a5fa'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%231e3a8a' font-family='sans-serif'%3ECity%3C/text%3E%3C/svg%3E" alt="City Explorer"></div>
+          <div class="strip-card" onclick="filterTheme('general', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fffbeb' width='200' height='200'/%3E%3Ccircle cx='100' cy='70' r='50' fill='%23fbbf24'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%2392420e' font-family='sans-serif'%3EBell%3C/text%3E%3C/svg%3E" alt="Bell Helmet"></div>
+          <div class="strip-card" onclick="filterTheme('general', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fdf2f8' width='200' height='200'/%3E%3Ccircle cx='100' cy='85' r='35' fill='%23f9a8d4'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%239d174d' font-family='sans-serif'%3EGreeting%3C/text%3E%3C/svg%3E" alt="Team Greeting"></div>
+          <div class="strip-card" onclick="filterTheme('general', this)"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23f8fafc' width='200' height='200'/%3E%3Crect x='50' y='60' width='100' height='70' rx='5' fill='%2394a3b8'/%3E%3Cline x1='70' y1='80' x2='130' y2='80' stroke='%23fff' stroke-width='3'/%3E%3Ctext x='100' y='170' text-anchor='middle' font-size='14' fill='%23334155' font-family='sans-serif'%3ENotebook%3C/text%3E%3C/svg%3E" alt="Workshop"></div>
+        </div>
+        <button type="button" class="row-arrow row-arrow-right" onclick="scrollStrip(this, 'right')">&gt;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- When specific tab: grid view (hidden by default with All active) -->
+  <div class="gallery-grid" id="galleryGrid" style="display:none">
+    <div class="gallery-card" data-theme="lunar" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fef3c7' width='200' height='200'/%3E%3Ctext x='100' y='90' text-anchor='middle' font-size='18' fill='%23d97706' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='12' fill='%23924e0f' font-family='sans-serif'%3ELantern%3C/text%3E%3Ctext x='100' y='140' text-anchor='middle' font-size='12' fill='%23924e0f' font-family='sans-serif'%3EDance%3C/text%3E%3C/svg%3E" alt="Lantern Dance">
+      <div class="card-label">Lunar New Year: Lantern Dance</div>
+    </div>
+    <div class="gallery-card" data-theme="lunar" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fee2e2' width='200' height='200'/%3E%3Ctext x='100' y='90' text-anchor='middle' font-size='18' fill='%23dc2626' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='12' fill='%23991b1b' font-family='sans-serif'%3ERed%3C/text%3E%3Ctext x='100' y='140' text-anchor='middle' font-size='12' fill='%23991b1b' font-family='sans-serif'%3EEnvelope%3C/text%3E%3C/svg%3E" alt="Red Envelope">
+      <div class="card-label">Lunar New Year: Red Envelope</div>
+    </div>
+    <div class="gallery-card" data-theme="lunar" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fce7f3' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23db2777' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%239d174b' font-family='sans-serif'%3ELucky%3C/text%3E%3Ctext x='100' y='148' text-anchor='middle' font-size='12' fill='%239d174b' font-family='sans-serif'%3EDragon%3C/text%3E%3C/svg%3E" alt="Lucky Dragon">
+      <div class="card-label">Lunar New Year: Lucky Dragon</div>
+    </div>
+    <div class="gallery-card" data-theme="lunar" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23ede9fe' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%237c3aed' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%235b21b6' font-family='sans-serif'%3EFireworks%3C/text%3E%3C/svg%3E" alt="Fireworks">
+      <div class="card-label">Lunar New Year: Fireworks</div>
+    </div>
+    <div class="gallery-card" data-theme="christmas" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23dbeafe' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%232563eb' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%231e40af' font-family='sans-serif'%3ESanta%3C/text%3E%3Ctext x='100' y='148' text-anchor='middle' font-size='12' fill='%231e40af' font-family='sans-serif'%3EHat%3C/text%3E%3C/svg%3E" alt="Santa Hat">
+      <div class="card-label">Christmas: Santa Hat</div>
+    </div>
+    <div class="gallery-card" data-theme="christmas" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23ecfdf5' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23059669' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%23064e3b' font-family='sans-serif'%3EGift%3C/text%3E%3Ctext x='100' y='148' text-anchor='middle' font-size='12' fill='%23064e3b' font-family='sans-serif'%3EBox%3C/text%3E%3C/svg%3E" alt="Gift Box">
+      <div class="card-label">Christmas: Gift Box</div>
+    </div>
+    <div class="gallery-card" data-theme="christmas" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fefce8' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23ca8a04' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%2385420e' font-family='sans-serif'%3ESnowman%3C/text%3E%3C/svg%3E" alt="Snowman">
+      <div class="card-label">Christmas: Snowman</div>
+    </div>
+    <div class="gallery-card" data-theme="halloween" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fef2f2' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23ef4444' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%23991b1b' font-family='sans-serif'%3EPumpkin%3C/text%3E%3C/svg%3E" alt="Pumpkin">
+      <div class="card-label">Halloween: Pumpkin</div>
+    </div>
+    <div class="gallery-card" data-theme="halloween" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fdf4ff' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23a21caf' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%23700e7c' font-family='sans-serif'%3EWitch%3C/text%3E%3Ctext x='100' y='148' text-anchor='middle' font-size='12' fill='%23700e7c' font-family='sans-serif'%3EHat%3C/text%3E%3C/svg%3E" alt="Witch Hat">
+      <div class="card-label">Halloween: Witch Hat</div>
+    </div>
+    <div class="gallery-card" data-theme="general" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23f0fdf4' width='200' height='200'/%3E%3Ctext x='100' y='90' text-anchor='middle' font-size='18' fill='%2316a34a' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='120' text-anchor='middle' font-size='12' fill='%23165e37' font-family='sans-serif'%3EClassic%3C/text%3E%3Ctext x='100' y='140' text-anchor='middle' font-size='12' fill='%23165e37' font-family='sans-serif'%3ETram Ride%3C/text%3E%3C/svg%3E" alt="Classic Tram Ride">
+      <div class="card-label">General: Classic Tram Ride</div>
+    </div>
+    <div class="gallery-card" data-theme="general" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23f8fafc' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23334155' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%231e293b' font-family='sans-serif'%3ECity%3C/text%3E%3Ctext x='100' y='148' text-anchor='middle' font-size='12' fill='%231e293b' font-family='sans-serif'%3EExplorer%3C/text%3E%3C/svg%3E" alt="City Explorer">
+      <div class="card-label">General: City Explorer</div>
+    </div>
+    <div class="gallery-card" data-theme="general" onclick="openLightbox(this)">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect fill='%23fff7ed' width='200' height='200'/%3E%3Ctext x='100' y='100' text-anchor='middle' font-size='18' fill='%23ea580c' font-family='sans-serif'%3E+%3C/text%3E%3Ctext x='100' y='130' text-anchor='middle' font-size='12' fill='%239a3412' font-family='sans-serif'%3EBell%3C/text%3E%3Ctext x='100' y='148' text-anchor='middle' font-size='12' fill='%239a3412' font-family='sans-serif'%3EHelmet%3C/text%3E%3C/svg%3E" alt="Bell Helmet">
+      <div class="card-label">General: Bell Helmet Hero</div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="footer">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <button class="lightbox-close" onclick="document.getElementById('lightbox').classList.remove('show')">+</button>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()" />
+</div>
+
+<script>
+function scrollStrip(btn, direction) {
+  const zone = btn.closest('.strip-scroll-zone');
+  const strip = zone ? zone.querySelector('.accepted-strip') : null;
+  if (strip) strip.scrollBy({ left: direction === 'left' ? -strip.clientWidth * 0.75 : strip.clientWidth * 0.75, behavior: 'smooth' });
+}
+
+function filterTheme(theme, btn) {
+  document.querySelectorAll('.theme-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const strip = document.getElementById('stripView');
+  const grid = document.getElementById('galleryGrid');
+  if (theme === 'all') {
+    strip.style.display = '';
+    grid.style.display = 'none';
+  } else {
+    strip.style.display = 'none';
+    grid.style.display = '';
+    document.querySelectorAll('.gallery-card').forEach(card => {
+      card.style.display = card.dataset.theme === theme ? '' : 'none';
+    });
+  }
+}
+
+function openLightbox(card) {
+  const img = card.querySelector('img');
+  if (img) {
+    document.getElementById('lightboxImg').src = img.src;
+    document.getElementById('lightbox').classList.add('show');
+  }
+}
+
+function switchTab(tab) {
+  // placeholder for the real app behavior
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('show');
+});
+</script>
+
+</body>
+</html>

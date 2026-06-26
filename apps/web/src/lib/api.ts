@@ -129,3 +129,28 @@ export function acceptSticker(id: string, input?: { selectedPath?: string; image
     method: "POST",
   });
 }
+
+export function listAllStickers(): Promise<StickerRecord[]> {
+  return request<StickerRecord[]>("/api/stickers");
+}
+
+export interface GalleryItem {
+  id: string;
+  theme: string;
+  description: string;
+  status: string;
+  imageUrl: string | null;
+  localPath: string;
+  createdAt: string;
+}
+
+export function listGallery(): Promise<GalleryItem[]> {
+  return request<GalleryItem[]>("/api/stickers/gallery");
+}
+
+export function removeGalleryItem(localPath: string): Promise<{ removed: boolean }> {
+  return request<{ removed: boolean }>("/api/stickers/gallery/remove", {
+    method: "POST",
+    body: JSON.stringify({ localPath }),
+  });
+}
