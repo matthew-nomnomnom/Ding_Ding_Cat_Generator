@@ -287,6 +287,13 @@ export function GeneratePage() {
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
 
+      const refreshPreviews: Record<string, string> = {};
+      generatedRecord.result?.candidates?.forEach((c) => {
+        refreshPreviews[c] = getCandidatePreviewUrl(generatedRecord, c, {});
+      });
+      setCandidatePreviews(refreshPreviews);
+      previewsRef.current = refreshPreviews;
+
       const firstCandidate = generatedRecord.result?.candidates?.[0];
       const firstCandidatePreview = firstCandidate
         ? (previewsRef.current[firstCandidate] || getCandidatePreviewUrl(generatedRecord, firstCandidate, {}))
@@ -373,6 +380,13 @@ export function GeneratePage() {
       setSelectedPath(refinedRecord.result?.selectedPath ?? refinedRecord.result?.candidates?.[0] ?? null);
       setRefinementRequirement("");
       setMessage("Refined into five new candidates. Pick one or refine again.");
+
+      const refreshPreviews: Record<string, string> = {};
+      refinedRecord.result?.candidates?.forEach((c) => {
+        refreshPreviews[c] = getCandidatePreviewUrl(refinedRecord, c, {});
+      });
+      setCandidatePreviews(refreshPreviews);
+      previewsRef.current = refreshPreviews;
 
       if (refinePreviewUrl) {
         setRefineHistory((prev) => [{
