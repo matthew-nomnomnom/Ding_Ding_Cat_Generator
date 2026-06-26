@@ -59,6 +59,14 @@ function describeImageProviderError(error: unknown, record: StickerRecord, varia
   return `Image provider request failed${code ? ` (${code})` : ""}: ${getErrorMessage(error)}. ${baseContext}`;
 }
 
+function isRetryableImageProviderError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /fetch failed|UND_ERR_SOCKET|\b5\d\d\b/i.test(error.message);
+}
+
 type ReferenceImage = {
   fileName: string;
   mimeType: string;
@@ -426,6 +434,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
   const settled: Array<{ index: number; candidatePath: string }> = [];
   const failures: unknown[] = [];
   let nextCandidateIndex = 0;
+  const maxProviderAttempts = 3;
 
   async function generateCandidate(i: number): Promise<void> {
     const index = i + 1;
@@ -442,7 +451,22 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
     const absolutePath = path.join(trialDirectory, fileName);
 
     if (config.imageGenerationApiKey) {
-      await generateWithImageProvider(record, absolutePath, { ...options, count }, index);
+      for (let attempt = 1; attempt <= maxProviderAttempts; attempt += 1) {
+        try {
+          await generateWithImageProvider(record, absolutePath, { ...options, count }, index);
+          break;
+        } catch (error) {
+          if (attempt === maxProviderAttempts || !isRetryableImageProviderError(error)) {
+            throw error;
+          }
+
+          logGenerationError("candidate_retrying", error, {
+            recordId: record.id,
+            candidate: `${index}/${count}`,
+            attempt,
+          });
+        }
+      }
     } else if (record.format === "gif") {
       await writeFile(absolutePath, `GIF placeholder candidate ${index}: image generation integration pending.\n`, "utf8");
     } else {

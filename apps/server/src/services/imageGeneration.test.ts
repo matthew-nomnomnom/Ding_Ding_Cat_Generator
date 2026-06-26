@@ -83,7 +83,7 @@ describe("generateSticker", () => {
     await rm(path.dirname(path.dirname(firstCandidatePath)), { recursive: true, force: true });
   });
 
-  test("keeps successful candidates when another candidate request fails", async () => {
+  test("retries transient candidate request failures before reducing candidate count", async () => {
     const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     let requestCount = 0;
     globalThis.fetch = (async () => {
@@ -110,9 +110,9 @@ describe("generateSticker", () => {
 
     const result = await generateSticker(record, { count: 2 });
 
-    assert.equal(requestCount, 2);
-    assert.equal(result.candidates?.length, 1);
-    assert.ok(result.candidates?.[0]?.endsWith(".png"));
+    assert.equal(requestCount, 3);
+    assert.equal(result.candidates?.length, 2);
+    assert.ok(result.candidates?.every((candidate) => candidate.endsWith(".png")));
 
     const candidatePath = result.candidates?.[0];
     assert.ok(candidatePath);
