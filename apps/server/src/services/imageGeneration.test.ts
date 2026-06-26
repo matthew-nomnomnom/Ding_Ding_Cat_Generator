@@ -24,7 +24,7 @@ describe("generateSticker", () => {
     config.imageGenerationApiUrl = "https://example.test/v1";
     config.imageGenerationModel = "openai/gpt-image-2";
     config.imageGenerationConcurrency = 2;
-    config.imageGenerationBaselineReferenceCount = 1;
+    config.imageGenerationBaselineReferenceCount = 0;
     config.notionToken = "";
     config.notionDatabaseId = "";
     config.blobReadWriteToken = "";
@@ -173,7 +173,9 @@ describe("generateSticker", () => {
     const baselinePath = path.join(baselineDirectory, "ding-ding.png");
     let activeRequests = 0;
     let maxActiveRequests = 0;
+    const originalBaselineReferenceCount = config.imageGenerationBaselineReferenceCount;
 
+    config.imageGenerationBaselineReferenceCount = 1;
     await mkdir(baselineDirectory, { recursive: true });
     await writeFile(baselinePath, pngBytes);
 
@@ -207,6 +209,7 @@ describe("generateSticker", () => {
       assert.equal(result.candidates?.length, 3);
       assert.equal(maxActiveRequests, 1);
     } finally {
+      config.imageGenerationBaselineReferenceCount = originalBaselineReferenceCount;
       await rm(baselineDirectory, { recursive: true, force: true });
       await rm(path.resolve(config.runtimeGeneratedRoot, "serial_edit"), { recursive: true, force: true });
     }
@@ -307,7 +310,9 @@ describe("generateSticker", () => {
     const baselinePath = path.join(baselineDirectory, "ding-ding.png");
     const secondBaselinePath = path.join(baselineDirectory, "ding-ding-side.png");
     const requests: Array<{ url: string; body: FormData; contentType?: string }> = [];
+    const originalBaselineReferenceCount = config.imageGenerationBaselineReferenceCount;
 
+    config.imageGenerationBaselineReferenceCount = 1;
     await mkdir(baselineDirectory, { recursive: true });
     await writeFile(baselinePath, pngBytes);
     await writeFile(secondBaselinePath, pngBytes);
@@ -352,6 +357,7 @@ describe("generateSticker", () => {
       assert.equal(request.body.getAll("image[]").length, 1);
       assert.ok(request.body.getAll("image[]").every((value) => value instanceof Blob));
     } finally {
+      config.imageGenerationBaselineReferenceCount = originalBaselineReferenceCount;
       await rm(baselineDirectory, { recursive: true, force: true });
       await rm(path.resolve(config.runtimeGeneratedRoot, "reference_test_theme"), { recursive: true, force: true });
     }
@@ -363,8 +369,10 @@ describe("generateSticker", () => {
     const baselinePath = path.join(baselineDirectory, "ding-ding.png");
     const requests: Array<{ url: string; body: FormData }> = [];
     const originalBlobToken = config.blobReadWriteToken;
+    const originalBaselineReferenceCount = config.imageGenerationBaselineReferenceCount;
 
     config.blobReadWriteToken = "test-blob-token";
+    config.imageGenerationBaselineReferenceCount = 1;
     await mkdir(baselineDirectory, { recursive: true });
     await writeFile(baselinePath, pngBytes);
 
@@ -402,6 +410,7 @@ describe("generateSticker", () => {
       assert.equal(requests[0].body.getAll("image[]").length, 1);
     } finally {
       config.blobReadWriteToken = originalBlobToken;
+      config.imageGenerationBaselineReferenceCount = originalBaselineReferenceCount;
       await rm(baselineDirectory, { recursive: true, force: true });
       await rm(path.resolve(config.runtimeGeneratedRoot, "canonical_read_failure"), { recursive: true, force: true });
     }
