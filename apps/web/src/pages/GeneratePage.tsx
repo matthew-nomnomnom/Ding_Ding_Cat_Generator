@@ -874,6 +874,7 @@ export function GeneratePage() {
       {lightboxImage ? (
         <div className="lightbox-overlay" onClick={() => setLightboxImage(null)}>
           <button className="lightbox-close" onClick={() => setLightboxImage(null)} aria-label="Close lightbox">X</button>
+          <a className="lightbox-download" href={lightboxImage} download onClick={(e) => e.stopPropagation()}>Download</a>
           <img className="lightbox-image" src={lightboxImage} alt="Enlarged sticker" onClick={(e) => e.stopPropagation()} />
         </div>
       ) : null}
@@ -881,6 +882,7 @@ export function GeneratePage() {
       {galleryLightbox ? (
         <div className="lightbox-overlay" onClick={() => setGalleryLightbox(null)}>
           <button className="lightbox-close" onClick={() => setGalleryLightbox(null)} aria-label="Close lightbox">X</button>
+          <a className="lightbox-download" href={galleryLightbox} download onClick={(e) => e.stopPropagation()}>Download</a>
           <img className="lightbox-image" src={galleryLightbox} alt="Enlarged sticker" onClick={(e) => e.stopPropagation()} />
         </div>
       ) : null}

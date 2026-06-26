@@ -701,6 +701,32 @@ dd {
   object-fit: contain;
 }
 
+.lightbox-download {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: var(--oliver-forest);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(31, 91, 69, 0.3);
+  transition: background 0.16s ease;
+  z-index: 1001;
+}
+
+.lightbox-download:hover {
+  background: var(--oliver-forest-dark);
+}
+
 @keyframes lightbox-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
