@@ -232,6 +232,38 @@ describe("generateSticker", () => {
     );
   });
 
+  test("does not retry provider socket failures after a long-held request closes", async () => {
+    const originalDateNow = Date.now;
+    let now = 1_700_000_000_000;
+    let requestCount = 0;
+
+    Date.now = () => now;
+    globalThis.fetch = (async () => {
+      requestCount += 1;
+      now += 180_000;
+      const socketError = Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" });
+      throw new TypeError("fetch failed", { cause: socketError });
+    }) as typeof fetch;
+
+    const record: StickerRecord = {
+      id: "long-socket-failure-test",
+      format: "svg",
+      theme: "socket failure",
+      description: "provider times out slowly",
+      status: "generating",
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    };
+
+    try {
+      await assert.rejects(generateSticker(record, { count: 1 }), /provider times out slowly/i);
+
+      assert.equal(requestCount, 1);
+    } finally {
+      Date.now = originalDateNow;
+    }
+  });
+
   test("logs candidate progress while generating placeholder assets", async () => {
     const originalApiKey = config.imageGenerationApiKey;
     const originalConsoleInfo = console.info;
@@ -267,7 +299,7 @@ describe("generateSticker", () => {
     assert.ok(messages.some((message) => message.includes("[sticker-generation] generation_completed")));
   });
 
-  test("sends baseline references as multipart image edit attachments", async () => {
+  test("caps automatic baseline references to keep edit requests small", async () => {
     const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     const baselineDirectory = path.resolve(process.cwd(), "../..", "data/baseline/unit-reference");
     const baselinePath = path.join(baselineDirectory, "ding-ding.png");
@@ -314,7 +346,7 @@ describe("generateSticker", () => {
       assert.equal(typeof request.body.get("prompt"), "string");
       assert.doesNotMatch(String(request.body.get("prompt")), /data:image/);
       assert.equal(request.body.get("image"), null);
-      assert.equal(request.body.getAll("image[]").length, 2);
+      assert.equal(request.body.getAll("image[]").length, 1);
       assert.ok(request.body.getAll("image[]").every((value) => value instanceof Blob));
     } finally {
       await rm(baselineDirectory, { recursive: true, force: true });

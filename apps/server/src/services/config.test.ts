@@ -12,6 +12,7 @@ const originalEnv = {
   AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   IMAGE_GENERATION_CANDIDATE_COUNT: process.env.IMAGE_GENERATION_CANDIDATE_COUNT,
   IMAGE_GENERATION_CONCURRENCY: process.env.IMAGE_GENERATION_CONCURRENCY,
+  IMAGE_GENERATION_BASELINE_REFERENCE_COUNT: process.env.IMAGE_GENERATION_BASELINE_REFERENCE_COUNT,
 };
 
 function restoreEnv(): void {
@@ -114,5 +115,13 @@ describe("config", () => {
     const { config } = await loadConfig();
 
     assert.equal(config.imageGenerationConcurrency, 2);
+  });
+
+  test("uses one baseline reference by default", async () => {
+    process.env.IMAGE_GENERATION_BASELINE_REFERENCE_COUNT = "";
+
+    const { config } = await loadConfig();
+
+    assert.equal(config.imageGenerationBaselineReferenceCount, 1);
   });
 });

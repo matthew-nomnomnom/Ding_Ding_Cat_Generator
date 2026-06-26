@@ -41,6 +41,7 @@ export const config = {
   imageGenerationModel: firstNonEmpty(process.env.IMAGE_GENERATION_MODEL, process.env.NANO_BANANA_MODEL) || "openai/gpt-image-2",
   imageGenerationCandidateCount: Number(firstNonEmpty(process.env.IMAGE_GENERATION_CANDIDATE_COUNT) || 5),
   imageGenerationConcurrency: positiveNumberOrDefault(firstNonEmpty(process.env.IMAGE_GENERATION_CONCURRENCY), 2),
+  imageGenerationBaselineReferenceCount: positiveNumberOrDefault(firstNonEmpty(process.env.IMAGE_GENERATION_BASELINE_REFERENCE_COUNT), 1),
   notionToken: process.env.NOTION_TOKEN ?? "",
   notionDatabaseId: process.env.NOTION_DATABASE_ID ?? "",
   blobReadWriteToken: process.env.BLOB_READ_WRITE_TOKEN ?? "",

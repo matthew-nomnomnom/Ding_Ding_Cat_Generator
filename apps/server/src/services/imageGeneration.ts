@@ -9,7 +9,7 @@ import { readRuntimeBlob, uploadRuntimeCandidateBlob } from "./runtimeBlob.js";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const runtimeGeneratedRoot = config.runtimeGeneratedRoot;
 const baselineRoot = path.join(projectRoot, "data/baseline");
-const maxBaselineReferences = 8;
+const maxRetryableProviderAttemptMs = 60_000;
 let imageEditQueue: Promise<void> = Promise.resolve();
 
 function logGenerationStep(step: string, fields: Record<string, string | number | boolean | undefined> = {}): void {
@@ -229,13 +229,16 @@ async function imageUrlToReferenceImage(url: string): Promise<ReferenceImage | u
 
 async function loadReferenceImages(_record: StickerRecord): Promise<ReferenceImage[]> {
   if (config.notionToken && config.notionDatabaseId) {
-    const baselineReferenceUrls = (await listDataFolderFileUrls("baseline")).slice(0, maxBaselineReferences);
+    const baselineReferenceUrls = (await listDataFolderFileUrls("baseline")).slice(0, config.imageGenerationBaselineReferenceCount);
     const references = await Promise.all(baselineReferenceUrls.map(imageUrlToReferenceImage));
 
     return references.filter((reference): reference is ReferenceImage => Boolean(reference));
   }
 
-  const baselineReferences = (await newestFirst(await listReferenceImagePaths(baselineRoot))).slice(0, maxBaselineReferences);
+  const baselineReferences = (await newestFirst(await listReferenceImagePaths(baselineRoot))).slice(
+    0,
+    config.imageGenerationBaselineReferenceCount,
+  );
 
   return Promise.all(baselineReferences.map(imagePathToReferenceImage));
 }
@@ -465,11 +468,17 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
 
     if (config.imageGenerationApiKey) {
       for (let attempt = 1; attempt <= maxProviderAttempts; attempt += 1) {
+        const attemptStartedAt = Date.now();
         try {
           await generateWithImageProvider(record, absolutePath, { ...options, count }, index);
           break;
         } catch (error) {
-          if (attempt === maxProviderAttempts || !isRetryableImageProviderError(error)) {
+          const attemptElapsedMs = Date.now() - attemptStartedAt;
+          if (
+            attempt === maxProviderAttempts
+            || attemptElapsedMs >= maxRetryableProviderAttemptMs
+            || !isRetryableImageProviderError(error)
+          ) {
             throw error;
           }
 
