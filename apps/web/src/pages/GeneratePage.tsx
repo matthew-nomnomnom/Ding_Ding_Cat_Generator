@@ -538,20 +538,6 @@ export function GeneratePage() {
           <div className="gen-row">
             <div className="gen-options">
               <div className="gen-field">
-                <span>Quick Pick</span>
-                <select
-                  className="gen-select"
-                  value={quickPick}
-                  onChange={(e) => handleQuickPickChange(e.target.value)}
-                  disabled={busy}
-                >
-                  <option value="">Choose a quick pick</option>
-                  {currentFestival.picks.map(([label, prompt]) => (
-                    <option key={label} value={prompt}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="gen-field">
                 <span>Festival</span>
                 <select
                   className="gen-select"
@@ -562,6 +548,20 @@ export function GeneratePage() {
                   <option value="">Festival theme</option>
                   {FESTIVALS.map((f) => (
                     <option key={f.id} value={f.id}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="gen-field">
+                <span>Quick Pick</span>
+                <select
+                  className="gen-select"
+                  value={quickPick}
+                  onChange={(e) => handleQuickPickChange(e.target.value)}
+                  disabled={busy}
+                >
+                  <option value="">Choose a quick pick</option>
+                  {currentFestival.picks.map(([label, prompt]) => (
+                    <option key={label} value={prompt}>{label}</option>
                   ))}
                 </select>
               </div>
