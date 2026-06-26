@@ -22,6 +22,56 @@ type OpenAiContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } };
 
+// ── Logging + error utilities (from main branch) ──
+
+function logGenerationStep(step: string, fields: Record<string, string | number | boolean | undefined> = {}): void {
+  const details = Object.entries(fields)
+    .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+  console.info(`[sticker-generation] ${step} ${new Date().toISOString()}${details ? ` ${details}` : ""}`);
+}
+
+function logGenerationError(step: string, error: unknown, fields: Record<string, string | number | boolean | undefined> = {}): void {
+  const details = Object.entries(fields)
+    .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+  console.error(`[sticker-generation] ${step} ${new Date().toISOString()}${details ? ` ${details}` : ""}`, error);
+}
+
+function getErrorCause(error: unknown): unknown {
+  return typeof error === "object" && error !== null && "cause" in error ? (error as { cause?: unknown }).cause : undefined;
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (typeof error === "object" && error !== null && "code" in error && typeof (error as { code?: unknown }).code === "string") {
+    return (error as { code: string }).code;
+  }
+
+  const cause = getErrorCause(error);
+  return typeof cause === "object" && cause !== null && "code" in cause && typeof (cause as { code?: unknown }).code === "string"
+    ? (cause as { code: string }).code
+    : undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function describeImageProviderError(error: unknown, record: StickerRecord, variationIndex: number): string {
+  const code = getErrorCode(error);
+  const cause = getErrorCause(error);
+  const causeMessage = cause instanceof Error ? cause.message : undefined;
+  const baseContext = `recordId=${record.id} candidate=${variationIndex} prompt="${record.description}"`;
+
+  if (code === "UND_ERR_SOCKET") {
+    return `Image provider connection closed while receiving a response (${code}${causeMessage ? `: ${causeMessage}` : ""}). The request reached the image provider/gateway, but its HTTPS socket closed before this candidate response completed. ${baseContext}`;
+  }
+
+  return `Image provider request failed${code ? ` (${code})` : ""}: ${getErrorMessage(error)}. ${baseContext}`;
+}
+
 type ImageResponse = {
   choices?: Array<{
     message?: {
@@ -690,7 +740,7 @@ function extractImageDataUrl(response: ImageResponse): string | undefined {
   return undefined;
 }
 
-async function generateWithNanoBanana(
+async function generateWithImageProvider(
   record: StickerRecord,
   outputPath: string,
   options: GenerateOptions,
@@ -803,11 +853,22 @@ async function generateWithNanoBanana(
 }
 
 export async function generateSticker(record: StickerRecord, options: GenerateOptions = {}): Promise<StickerResult> {
-  const count = options.count ?? 5;
+  const count = options.count ?? config.imageGenerationCandidateCount;
+  const generationStartedAt = Date.now();
   const generatedDirectory = path.join(runtimeGeneratedRoot, slugify(record.theme), slugify(record.description));
   const trialDirectory = path.join(generatedDirectory, `trial-${Date.now()}`);
 
   await mkdir(trialDirectory, { recursive: true });
+
+  logGenerationStep("generation_started", {
+    recordId: record.id,
+    count,
+    theme: slugify(record.theme),
+    hasNanoBananaKey: Boolean(config.nanoBananaApiKey),
+    hasGeminiKey: Boolean(config.geminiApiKey),
+    hasGptImageModel: Boolean(config.gptImageModel),
+    refinement: Boolean(options.refinementRequirement),
+  });
 
   // Load reference images once for all candidates
   const { parts: refParts, sources: refSources, paths: refPaths } = await loadReferenceImageParts(record);
@@ -835,12 +896,19 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
   }
 
   const isLive = Boolean(config.gptImageModel || config.geminiApiKey || config.nanoBananaApiKey);
-
   const candidateUrls: Record<string, string> = {};
   let completedCount = 0;
+  const settled: Array<{ index: number; candidatePath: string }> = [];
+  const failures: unknown[] = [];
 
-  const tasks = Array.from({ length: count }, async (_, i) => {
+  for (let i = 0; i < count; i += 1) {
     const index = i + 1;
+    const candidateStartedAt = Date.now();
+    logGenerationStep("candidate_started", {
+      recordId: record.id,
+      candidate: `${index}/${count}`,
+    });
+
     const fileName = isLive
       ? `candidate-${String(index).padStart(2, "0")}.png`
       : record.format === "gif"
@@ -848,36 +916,95 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
         : `candidate-${String(index).padStart(2, "0")}.svg`;
     const absolutePath = path.join(trialDirectory, fileName);
 
-    if (isLive) {
-      await generateWithNanoBanana(record, absolutePath, { ...options, count }, index, refParts, allGeminiFileUris, gptImageRefBuffers, gptImageExtraBuffers);
-    } else if (record.format === "gif") {
-      await writeFile(absolutePath, `GIF placeholder candidate ${index}: Nano Banana 2 integration pending.\n`, "utf8");
-    } else {
-      await writeFile(absolutePath, buildPlaceholderSvg(record), "utf8");
+    try {
+      if (isLive) {
+        await generateWithImageProvider(record, absolutePath, { ...options, count }, index, refParts, allGeminiFileUris, gptImageRefBuffers, gptImageExtraBuffers);
+      } else if (record.format === "gif") {
+        await writeFile(absolutePath, `GIF placeholder candidate ${index}: image generation integration pending.\n`, "utf8");
+      } else {
+        await writeFile(absolutePath, buildPlaceholderSvg(record), "utf8");
+      }
+
+      logGenerationStep("candidate_file_written", {
+        recordId: record.id,
+        candidate: `${index}/${count}`,
+        fileName,
+        elapsedMs: Date.now() - candidateStartedAt,
+      });
+
+      const candidatePath = path.join(".runtime/generated", path.relative(runtimeGeneratedRoot, absolutePath)).replace(/\\/g, "/");
+
+      logGenerationStep("candidate_blob_upload_started", {
+        recordId: record.id,
+        candidate: `${index}/${count}`,
+      });
+      const blobPathname = await uploadRuntimeCandidateBlob(record.id, candidatePath, absolutePath);
+      logGenerationStep("candidate_blob_upload_completed", {
+        recordId: record.id,
+        candidate: `${index}/${count}`,
+        uploaded: Boolean(blobPathname),
+      });
+      if (blobPathname) {
+        candidateUrls[candidatePath] = blobPathname;
+      }
+
+      completedCount += 1;
+      const mime = `image/${path.extname(absolutePath).toLowerCase() === ".svg" ? "svg+xml" : "png"}`;
+      const raw = await readFile(absolutePath);
+      const preview = `data:${mime};base64,${raw.toString("base64")}`;
+      options.onProgress?.(completedCount, count, candidatePath, preview);
+
+      logGenerationStep("candidate_progress", {
+        recordId: record.id,
+        candidate: `${completedCount}/${count}`,
+        candidatePath,
+      });
+
+      settled.push({ index, candidatePath });
+    } catch (error) {
+      const providerError = new Error(describeImageProviderError(error, record, index), { cause: error });
+      logGenerationError("candidate_failed", providerError, {
+        recordId: record.id,
+        candidate: `${index}/${count}`,
+        elapsedMs: Date.now() - candidateStartedAt,
+      });
+      failures.push(error);
     }
+  }
 
-    const candidatePath = path.join(".runtime/generated", path.relative(runtimeGeneratedRoot, absolutePath)).replace(/\\/g, "/");
-    const blobPathname = await uploadRuntimeCandidateBlob(record.id, candidatePath, absolutePath);
-    const mime = `image/${path.extname(absolutePath).toLowerCase() === ".svg" ? "svg+xml" : "png"}`;
-    const raw = await readFile(absolutePath);
-    const preview = `data:${mime};base64,${raw.toString("base64")}`;
-    if (blobPathname) {
-      candidateUrls[candidatePath] = blobPathname;
-    }
-
-    completedCount += 1;
-    options.onProgress?.(completedCount, count, candidatePath, preview);
-
-    return { index, candidatePath };
-  });
-
-  const settled = await Promise.all(tasks);
+  if (settled.length === 0) {
+    const error = failures[0];
+    logGenerationError("generation_failed", error, {
+      recordId: record.id,
+      elapsedMs: Date.now() - generationStartedAt,
+    });
+    throw error;
+  }
 
   settled.sort((a, b) => a.index - b.index);
   const candidates = settled.map((r) => r.candidatePath);
 
+  // Determine provider label
+  let provider: StickerResult["provider"] = "placeholder";
+  if (config.gptImageModel) {
+    provider = "gpt-image-2";
+  } else if (config.geminiApiKey) {
+    provider = "gemini";
+  } else if (config.nanoBananaApiKey) {
+    provider = "nano-banana-2";
+  }
+
+  logGenerationStep("generation_completed", {
+    recordId: record.id,
+    count: candidates.length,
+    totalAttempted: count,
+    failedCount: failures.length,
+    provider,
+    elapsedMs: Date.now() - generationStartedAt,
+  });
+
   return {
-    provider: "nano-banana-2",
+    provider,
     format: record.format,
     candidates,
     candidateUrls,

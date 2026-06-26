@@ -1,4 +1,3 @@
-import type { Response } from "express";
 import { createStickerSchema } from "@sticker-platform/shared";
 import { Router } from "express";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -6,8 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { config } from "../config.js";
-import { generateSticker } from "../services/nanoBanana.js";
-import { getAvailableNotionContentName, uploadAcceptedStickerRecord, uploadRejectedStickerRun } from "../services/notion.js";
+import { generateSticker } from "../services/imageGeneration.js";
+import { getAvailableNotionContentName, uploadAcceptedStickerRecord, uploadDataFolderFile, uploadRejectedStickerRun } from "../services/notion.js";
 import {
   createStickerRecord,
   deleteStickerCache,
@@ -20,13 +19,61 @@ import { readRuntimeBlob, uploadRuntimeReferenceBlob } from "../services/runtime
 
 type StickerRecord = Awaited<ReturnType<typeof getStickerRecord>> extends infer T ? NonNullable<T> : never;
 
-function writeSSE(res: Response, event: Record<string, unknown>): void {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
+function logStickerRouteStep(step: string, fields: Record<string, string | number | boolean | undefined> = {}): void {
+  const details = Object.entries(fields)
+    .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+  console.info(`[sticker-route] ${step} ${new Date().toISOString()}${details ? ` ${details}` : ""}`);
 }
 
-function sendSSEError(res: Response, message: string): void {
-  writeSSE(res, { type: "error", message });
-  res.end();
+function logStickerRouteError(step: string, error: unknown, fields: Record<string, string | number | boolean | undefined> = {}): void {
+  const details = Object.entries(fields)
+    .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+  console.error(`[sticker-route] ${step} ${new Date().toISOString()}${details ? ` ${details}` : ""}`, error);
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function startBackgroundGeneration(
+  record: StickerRecord,
+  options: Parameters<typeof generateSticker>[1],
+  mode: "generate" | "refine",
+): void {
+  logStickerRouteStep("background_generation_started", {
+    recordId: record.id,
+    mode,
+    count: config.imageGenerationCandidateCount,
+    refinement: Boolean(options?.refinementRequirement),
+  });
+
+  void (async () => {
+    try {
+      const result = await generateSticker(record, options);
+      await updateStickerRecord(record.id, {
+        status: "generated",
+        result,
+        error: undefined,
+      });
+      logStickerRouteStep("background_generation_completed", {
+        recordId: record.id,
+        mode,
+        candidates: result.candidates?.length ?? 0,
+      });
+    } catch (error) {
+      logStickerRouteError("background_generation_failed", error, { recordId: record.id, mode });
+      await updateStickerRecord(record.id, {
+        status: "failed",
+        error: getErrorMessage(error),
+      }).catch((updateError) => {
+        logStickerRouteError("background_generation_status_update_failed", updateError, { recordId: record.id, mode });
+      });
+    }
+  })();
 }
 
 export const stickersRouter = Router();
@@ -98,6 +145,12 @@ function withoutCandidatePreviews(record: StickerRecord): StickerRecord {
   return { ...record, result };
 }
 
+function assertNotionConfigured(): void {
+  if (!config.notionToken || !config.notionDatabaseId) {
+    throw Object.assign(new Error("Notion is not configured"), { statusCode: 500 });
+  }
+}
+
 async function getAcceptedStickerPaths(record: Awaited<ReturnType<typeof getStickerRecord>>, selectedPath?: string) {
   if (!record) {
     throw new Error("Sticker record not found");
@@ -131,6 +184,8 @@ stickersRouter.post("/upload-reference", async (req, res, next) => {
     const base64 = input.data.includes(",") ? input.data.split(",", 2)[1] : input.data;
     const body = Buffer.from(base64, "base64");
 
+    assertNotionConfigured();
+
     await mkdir(runtimeUploadsRoot, { recursive: true });
 
     const filePath = path.join(runtimeUploadsRoot, safeName);
@@ -139,10 +194,28 @@ stickersRouter.post("/upload-reference", async (req, res, next) => {
     const relativePath = process.env.VERCEL
       ? `.runtime/uploads/${safeName}`
       : path.relative(projectRoot, filePath).replace(/\\/g, "/");
-    const recordKey = `${slugify(input.theme)}-${slugify(input.description)}`;
+    const themeSlug = slugify(input.theme);
+    const descriptionSlug = slugify(input.description);
+    const recordKey = `${themeSlug}-${descriptionSlug}`;
     const blobPathname = await uploadRuntimeReferenceBlob(recordKey, relativePath, body);
 
-    res.json({ path: relativePath, blobPathname });
+    const contentName = await getAvailableNotionContentName("reference", themeSlug, descriptionSlug, safeExtension);
+    const notionPageId = await uploadDataFolderFile({
+      group: "reference",
+      category: themeSlug,
+      content: contentName,
+      relativePath,
+      absolutePath: filePath,
+      data: body,
+      sizeBytes: body.byteLength,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (notionPageId === "notion-not-configured") {
+      throw Object.assign(new Error("Notion is not configured"), { statusCode: 500 });
+    }
+
+    res.json({ path: relativePath, blobPathname, notionPageId });
   } catch (error) {
     next(error);
   }
@@ -251,36 +324,21 @@ stickersRouter.post("/:id/generate", async (req, res, next) => {
       }
     }
 
-    res.set({
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-
+    const routeStartedAt = Date.now();
+    logStickerRouteStep("generate_request_accepted", { recordId: record.id, theme: record.theme });
     await deleteStickerRuntimeAssets(record.id);
-    await updateStickerRecord(record.id, { status: "generating" });
-    const result = await generateSticker(record, {
-      count: 5,
+    const generatingRecord = await updateStickerRecord(record.id, { status: "generating", error: undefined, result: undefined });
+    logStickerRouteStep("generate_record_marked_generating", { recordId: record.id });
+    startBackgroundGeneration(record, {
+      count: config.imageGenerationCandidateCount,
       referenceImagePath: input.referenceImagePath,
       referenceImageUrl: input.referenceImageUrl,
-      onProgress: (current, total, candidatePath, preview) => {
-        writeSSE(res, { type: "progress", current, total, candidate: candidatePath, preview });
-      },
-    });
-    const updated = await updateStickerRecord(record.id, {
-      status: "generated",
-      result,
-    });
-
-    writeSSE(res, { type: "done", record: updated });
-    res.end();
+    }, "generate");
+    logStickerRouteStep("generate_start_response_sent", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
+    res.status(202).json(generatingRecord);
   } catch (error) {
-    if (res.headersSent) {
-      const message = error instanceof Error ? error.message : "Generation failed";
-      sendSSEError(res, message);
-    } else {
-      next(error);
-    }
+    logStickerRouteError("generate_failed", error, { recordId: req.params.id });
+    next(error);
   }
 });
 
@@ -296,42 +354,28 @@ stickersRouter.post("/:id/refine", async (req, res, next) => {
 
     assertGeneratedPath(input.selectedPath);
 
-    res.set({
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-
+    const routeStartedAt = Date.now();
+    logStickerRouteStep("refine_request_accepted", { recordId: record.id });
     await deleteStickerRuntimeAssets(record.id);
-    await updateStickerRecord(record.id, {
+    const generatingRecord = await updateStickerRecord(record.id, {
       status: "generating",
+      error: undefined,
       result: record.result ? { ...record.result, selectedPath: input.selectedPath } : undefined,
     });
-    const result = await generateSticker(record, {
-      count: 5,
+    logStickerRouteStep("refine_record_marked_generating", { recordId: record.id });
+    startBackgroundGeneration(record, {
+      count: config.imageGenerationCandidateCount,
       selectedImagePath: input.selectedPath,
       selectedImageUrl: record.result?.candidateUrls?.[input.selectedPath],
       refinementRequirement: input.requirement,
       referenceImagePath: input.referenceImagePath,
       referenceImageUrl: input.referenceImageUrl,
-      onProgress: (current, total, candidatePath, preview) => {
-        writeSSE(res, { type: "progress", current, total, candidate: candidatePath, preview });
-      },
-    });
-    const updated = await updateStickerRecord(record.id, {
-      status: "generated",
-      result,
-    });
-
-    writeSSE(res, { type: "done", record: updated });
-    res.end();
+    }, "refine");
+    logStickerRouteStep("refine_start_response_sent", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
+    res.status(202).json(generatingRecord);
   } catch (error) {
-    if (res.headersSent) {
-      const message = error instanceof Error ? error.message : "Refinement failed";
-      sendSSEError(res, message);
-    } else {
-      next(error);
-    }
+    logStickerRouteError("refine_failed", error, { recordId: req.params.id });
+    next(error);
   }
 });
 
@@ -374,12 +418,12 @@ stickersRouter.post("/:id/accept", async (req, res, next) => {
       cachePath,
       result: record.result
         ? { ...record.result, localPath: finalPath, fileUrl: `/${finalPath.replace(/^data\//, "")}`, selectedPath: finalPath }
-        : { provider: "nano-banana-2", format: record.format, localPath: finalPath, fileUrl: `/${finalPath.replace(/^data\//, "")}`, selectedPath: finalPath },
+        : { provider: "gpt-image-2", format: record.format, localPath: finalPath, fileUrl: `/${finalPath.replace(/^data\//, "")}`, selectedPath: finalPath },
     });
     const notionPageId = await uploadAcceptedStickerRecord(withoutCandidatePreviews(accepted), sourceAbsolutePath);
     const uploaded = await updateStickerRecord(accepted.id, {
       status: "uploaded",
-      result: accepted.result ? { ...accepted.result, notionPageId } : { provider: "nano-banana-2", format: accepted.format, notionPageId },
+      result: accepted.result ? { ...accepted.result, notionPageId } : { provider: "gpt-image-2", format: accepted.format, notionPageId },
     });
 
     await deleteStickerCache(uploaded.id);

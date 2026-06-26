@@ -10,6 +10,7 @@ const notionVersion = "2022-06-28";
 const notionFileUploadVersion = "2026-03-11";
 const dataGroupTitles = {
   baseline: "baseline",
+  reference: "reference",
   generated: "generated",
   history: "history",
 } as const;
@@ -39,7 +40,7 @@ const rejectedDatabaseProperties = {
   "Updated At": { date: {} },
 };
 
-export type DataFolderGroup = "baseline" | "generated" | "history";
+export type DataFolderGroup = "baseline" | "reference" | "generated" | "history";
 
 export type DataFolderFile = {
   group: DataFolderGroup;
@@ -740,7 +741,7 @@ function buildRejectedProperties(record: StickerRecord, reason?: string) {
     "Reject Reason": richText(reason),
     "Selected Candidate": richText(record.result?.selectedPath),
     "Candidate Count": number(record.result?.candidates?.length ?? 0),
-    Model: select(record.result?.provider ?? "nano-banana-2"),
+    Model: select(record.result?.provider ?? "gpt-image-2"),
     "Created At": date(record.createdAt),
     "Updated At": date(record.updatedAt),
   };
@@ -818,7 +819,7 @@ export async function uploadRejectedStickerRun(record: StickerRecord, reason?: s
 function dataFileFromRelativePath(relativePath: string): DataFolderFile | undefined {
   const [dataRoot, group, category, ...rest] = relativePath.split(path.sep);
 
-  if (dataRoot !== "data" || !category || !["baseline", "generated", "history"].includes(group)) {
+  if (dataRoot !== "data" || !category || !["baseline", "reference", "generated", "history"].includes(group)) {
     return undefined;
   }
 
