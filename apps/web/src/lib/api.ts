@@ -150,3 +150,7 @@ export function acceptSticker(id: string, input?: { selectedPath?: string; image
     method: "POST",
   });
 }
+
+export function listAllStickers(): Promise<StickerRecord[]> {
+  return request<StickerRecord[]>("/api/stickers");
+}
