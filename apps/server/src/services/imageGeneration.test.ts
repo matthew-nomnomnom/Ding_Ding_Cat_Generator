@@ -120,7 +120,7 @@ describe("generateSticker", () => {
     });
   });
 
-  test("requests GPT Image 2 candidates sequentially", async () => {
+  test("requests GPT Image 2 candidates in parallel", async () => {
     const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     let activeRequests = 0;
     let maxActiveRequests = 0;
@@ -137,10 +137,10 @@ describe("generateSticker", () => {
     }) as typeof fetch;
 
     const record: StickerRecord = {
-      id: "sequential-candidates-test",
+      id: "parallel-candidates-test",
       format: "svg",
-      theme: "sequential candidates",
-      description: "avoid gateway socket pressure",
+      theme: "parallel candidates",
+      description: "speed up generation",
       status: "generating",
       createdAt: new Date(0).toISOString(),
       updatedAt: new Date(0).toISOString(),
@@ -149,7 +149,11 @@ describe("generateSticker", () => {
     const result = await generateSticker(record, { count: 3 });
 
     assert.equal(result.candidates?.length, 3);
-    assert.equal(maxActiveRequests, 1);
+    assert.ok(maxActiveRequests > 1);
+    assert.deepEqual(
+      result.candidates?.map((candidate) => path.basename(candidate)),
+      ["candidate-01.png", "candidate-02.png", "candidate-03.png"],
+    );
 
     const candidatePath = result.candidates?.[0];
     assert.ok(candidatePath);

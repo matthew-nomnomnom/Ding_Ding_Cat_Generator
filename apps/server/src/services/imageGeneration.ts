@@ -423,10 +423,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
   const candidateUrls: Record<string, string> = {};
   let completedCount = 0;
 
-  const settled: Array<{ index: number; candidatePath: string }> = [];
-  const failures: unknown[] = [];
-
-  for (let i = 0; i < count; i += 1) {
+  const candidateTasks = Array.from({ length: count }, async (_value, i) => {
     const index = i + 1;
     const candidateStartedAt = Date.now();
     logGenerationStep("candidate_started", {
@@ -440,48 +437,56 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
         : `candidate-${String(index).padStart(2, "0")}.svg`;
     const absolutePath = path.join(trialDirectory, fileName);
 
-    try {
-      if (config.imageGenerationApiKey) {
-        await generateWithImageProvider(record, absolutePath, { ...options, count }, index);
-      } else if (record.format === "gif") {
-        await writeFile(absolutePath, `GIF placeholder candidate ${index}: image generation integration pending.\n`, "utf8");
-      } else {
-        await writeFile(absolutePath, buildPlaceholderSvg(record), "utf8");
-      }
+    if (config.imageGenerationApiKey) {
+      await generateWithImageProvider(record, absolutePath, { ...options, count }, index);
+    } else if (record.format === "gif") {
+      await writeFile(absolutePath, `GIF placeholder candidate ${index}: image generation integration pending.\n`, "utf8");
+    } else {
+      await writeFile(absolutePath, buildPlaceholderSvg(record), "utf8");
+    }
 
-      logGenerationStep("candidate_file_written", {
-        recordId: record.id,
-        candidate: `${index}/${count}`,
-        fileName,
-        elapsedMs: Date.now() - candidateStartedAt,
-      });
+    logGenerationStep("candidate_file_written", {
+      recordId: record.id,
+      candidate: `${index}/${count}`,
+      fileName,
+      elapsedMs: Date.now() - candidateStartedAt,
+    });
 
-      const candidatePath = path.join(".runtime/generated", path.relative(runtimeGeneratedRoot, absolutePath)).replace(/\\/g, "/");
-      logGenerationStep("candidate_blob_upload_started", {
-        recordId: record.id,
-        candidate: `${index}/${count}`,
-      });
-      const blobPathname = await uploadRuntimeCandidateBlob(record.id, candidatePath, absolutePath);
-      logGenerationStep("candidate_blob_upload_completed", {
-        recordId: record.id,
-        candidate: `${index}/${count}`,
-        uploaded: Boolean(blobPathname),
-      });
-      if (blobPathname) {
-        candidateUrls[candidatePath] = blobPathname;
-      }
+    const candidatePath = path.join(".runtime/generated", path.relative(runtimeGeneratedRoot, absolutePath)).replace(/\\/g, "/");
+    logGenerationStep("candidate_blob_upload_started", {
+      recordId: record.id,
+      candidate: `${index}/${count}`,
+    });
+    const blobPathname = await uploadRuntimeCandidateBlob(record.id, candidatePath, absolutePath);
+    logGenerationStep("candidate_blob_upload_completed", {
+      recordId: record.id,
+      candidate: `${index}/${count}`,
+      uploaded: Boolean(blobPathname),
+    });
+    if (blobPathname) {
+      candidateUrls[candidatePath] = blobPathname;
+    }
 
-      completedCount += 1;
-      options.onProgress?.(completedCount, count, candidatePath);
-      logGenerationStep("candidate_progress", {
-        recordId: record.id,
-        candidate: `${completedCount}/${count}`,
-        candidatePath,
-      });
+    completedCount += 1;
+    options.onProgress?.(completedCount, count, candidatePath);
+    logGenerationStep("candidate_progress", {
+      recordId: record.id,
+      candidate: `${completedCount}/${count}`,
+      candidatePath,
+    });
 
-      settled.push({ index, candidatePath });
-    } catch (error) {
-      failures.push(error);
+    return { index, candidatePath };
+  });
+
+  const results = await Promise.allSettled(candidateTasks);
+  const settled: Array<{ index: number; candidatePath: string }> = [];
+  const failures: unknown[] = [];
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      settled.push(result.value);
+    } else {
+      failures.push(result.reason);
     }
   }
 

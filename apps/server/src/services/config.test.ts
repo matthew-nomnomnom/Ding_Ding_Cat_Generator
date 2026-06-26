@@ -33,7 +33,7 @@ describe("config", () => {
   });
 
   test("uses the next image generation key when OPENAI_API_KEY is empty", async () => {
-    delete process.env.IMAGE_GENERATION_API_KEY;
+    process.env.IMAGE_GENERATION_API_KEY = "";
     process.env.OPENAI_API_KEY = "";
     process.env.NANO_BANANA_API_KEY = "nano-key";
     process.env.AI_GATEWAY_API_KEY = "gateway-key";
