@@ -5,6 +5,7 @@ dist/
 data/
 apps/server/data/
 .runtime/
+Batch testing/
 *.log
 *.tsbuildinfo
 .vercel
