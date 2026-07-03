@@ -118,16 +118,6 @@ function getCandidatePreviewUrl(record: StickerRecord, candidatePath: string, pr
   return getGeneratedAssetUrl(candidatePath);
 }
 
-interface HistoryItem {
-  prompt: string;
-  festival: string;
-  quickPick: string;
-  format: string;
-  time: number;
-  record: StickerRecord;
-  previews: Record<string, string>;
-}
-
 export function GeneratePage() {
   const [pageView, setPageView] = useState<"generator" | "gallery">("generator");
   const [festivalId, setFestivalId] = useState("");
@@ -136,7 +126,14 @@ export function GeneratePage() {
   const [description, setDescription] = useState("");
   const [record, setRecord] = useState<StickerRecord | null>(null);
   const [candidatePreviews, setCandidatePreviews] = useState<Record<string, string>>({});
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [refineHistory, setRefineHistory] = useState<{
+    previewUrl: string;
+    description: string;
+    subtitle: string;
+    time: number;
+    record: StickerRecord;
+    previews: Record<string, string>;
+  }[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -152,6 +149,8 @@ export function GeneratePage() {
   const [showRefinePanel, setShowRefinePanel] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const dragCounterRef = useRef(0);
+  const previewsRef = useRef<Record<string, string>>({});
+  const scrollRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const stripRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -362,7 +361,9 @@ export function GeneratePage() {
 
       let refPath: string | undefined;
       let refUrl: string | undefined;
+      let historyPreviewUrl: string | null = null;
       if (pendingPhoto) {
+        historyPreviewUrl = photoPreview;
         const uploaded = await uploadReferenceImage(pendingPhoto.fileName, pendingPhoto.dataUrl, theme, prompt);
         refPath = uploaded.path;
         refUrl = uploaded.blobPathname;
@@ -370,23 +371,22 @@ export function GeneratePage() {
       }
 
       const generatedRecord = await generateSticker(createdRecord.id, (_current, _total, candidate, preview) => {
-        if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        if (preview) {
+          previewsRef.current[candidate] = preview;
+          setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        }
       }, { theme, description: prompt, referenceImagePath: refPath, referenceImageUrl: refUrl });
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
-      const selected = generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null;
-      if (selected && candidatePreviews[selected]) {
-        setHistory((prev) => [{
-          prompt,
-          festival: festivalId,
-          quickPick,
-          format,
-          time: Date.now(),
-          record: generatedRecord,
-          previews: candidatePreviews,
-        }, ...prev].slice(0, 8));
-      }
+      setRefineHistory((prev) => [{
+        previewUrl: historyPreviewUrl || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        description: prompt,
+        subtitle: historyPreviewUrl ? "Reference image" : prompt,
+        time: Date.now(),
+        record: generatedRecord,
+        previews: { ...previewsRef.current },
+      }, ...prev]);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to generate sticker");
     } finally {
@@ -401,11 +401,15 @@ export function GeneratePage() {
     setError(null);
     setMessage(null);
     setBusy(true);
+    previewsRef.current = {};
     setCandidatePreviews({});
 
     try {
       const generatedRecord = await generateSticker(record.id, (_current, _total, candidate, preview) => {
-        if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        if (preview) {
+          previewsRef.current[candidate] = preview;
+          setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+        }
       }, { theme, description: record.description });
 
       setRecord(generatedRecord);
@@ -430,6 +434,12 @@ export function GeneratePage() {
     setError(null);
     setMessage(null);
     setBusy(true);
+
+    const refinePreviewUrl = selectedCandidate
+      ? getCandidatePreviewUrl(record, selectedCandidate, candidatePreviews)
+      : null;
+
+    previewsRef.current = {};
     setCandidatePreviews({});
 
     try {
@@ -440,7 +450,10 @@ export function GeneratePage() {
           requirement: refinementRequirement.trim(),
         },
         (_current, _total, candidate, preview) => {
-          if (preview) setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+          if (preview) {
+            previewsRef.current[candidate] = preview;
+            setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
+          }
         },
       );
 
@@ -448,6 +461,17 @@ export function GeneratePage() {
       setSelectedPath(refinedRecord.result?.selectedPath ?? refinedRecord.result?.candidates?.[0] ?? null);
       setRefinementRequirement("");
       setMessage("Refined into five new candidates. Pick one or refine again.");
+
+      if (refinePreviewUrl) {
+        setRefineHistory((prev) => [{
+          previewUrl: refinePreviewUrl,
+          description: record.description,
+          subtitle: refinementRequirement.trim(),
+          time: Date.now(),
+          record: refinedRecord,
+          previews: { ...previewsRef.current },
+        }, ...prev]);
+      }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to refine selected candidate");
     } finally {
@@ -485,14 +509,23 @@ export function GeneratePage() {
     }
   }
 
-  function openHistory(index: number) {
-    const item = history[index];
-    if (!item) return;
+  function restoreFromHistory(item: typeof refineHistory[number]) {
     setRecord(item.record);
     setCandidatePreviews(item.previews);
-    setFestivalId(item.festival);
-    setQuickPick(item.quickPick);
-    setDescription(item.prompt);
+    setSelectedPath(item.record.result?.selectedPath ?? item.record.result?.candidates?.[0] ?? null);
+    setShowRefinePanel(false);
+  }
+
+  function scrollRefineHistory(direction: "left" | "right") {
+    const container = scrollRef.current;
+    if (!container) return;
+    const thumb = container.querySelector(".refine-thumb") as HTMLElement | null;
+    const gap = 10;
+    const itemWidth = thumb ? thumb.offsetWidth + gap : 95;
+    container.scrollBy({
+      left: direction === "left" ? -itemWidth : itemWidth,
+      behavior: "smooth",
+    });
   }
 
   return (
@@ -686,11 +719,10 @@ export function GeneratePage() {
         </section>
 
         <aside className="history-card">
-          <span className="eyebrow">History</span>
           <div className="history-head">
             <div>
-              <h2>Recent Ding Ding Cat generations</h2>
-              <div className="count"><span>{history.length}</span> items</div>
+              <h2>Refine History</h2>
+              <div className="count"><span>{refineHistory.length}</span> items</div>
             </div>
           </div>
 
@@ -718,16 +750,42 @@ export function GeneratePage() {
             ) : null}
           </div>
 
-          {history.length === 0 ? (
-            <div className="empty-history">No generations yet. Your Ding Ding Cat results will appear here as clickable thumbnails.</div>
+          {refineHistory.length === 0 ? (
+            <div className="empty-history">Refined images will appear here. Use the Refine button to iterate on your design.</div>
           ) : (
-            <div className="thumb-grid">
-              {history.map((item, index) => (
-                <button className="thumb" type="button" key={item.time} onClick={() => openHistory(index)} aria-label={`Open ${item.prompt}`}>
-                  <div className="mini" />
-                  <div className="thumb-label">{esc(item.prompt.slice(0, 40))}{item.prompt.length > 40 ? "…" : ""}</div>
-                </button>
-              ))}
+            <div className="refine-scroll-wrapper">
+              <button
+                className="refine-scroll-btn refine-scroll-left"
+                type="button"
+                disabled={busy}
+                onClick={() => scrollRefineHistory("left")}
+                aria-label="Scroll left"
+              >◀</button>
+              <div className="refine-scroll-container" ref={scrollRef}>
+                {refineHistory.map((item) => (
+                  <button
+                    className="refine-thumb"
+                    key={item.time}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => restoreFromHistory(item)}
+                  >
+                    <img
+                      src={item.previewUrl}
+                      alt={item.description}
+                      onDoubleClick={(e) => { e.stopPropagation(); setLightboxImage(item.previewUrl); }}
+                    />
+                    <div className="thumb-subtitle">{item.subtitle}</div>
+                  </button>
+                ))}
+              </div>
+              <button
+                className="refine-scroll-btn refine-scroll-right"
+                type="button"
+                disabled={busy}
+                onClick={() => scrollRefineHistory("right")}
+                aria-label="Scroll right"
+              >▶</button>
             </div>
           )}
         </aside>
