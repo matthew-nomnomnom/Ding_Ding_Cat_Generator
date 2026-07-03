@@ -12,6 +12,7 @@ const runtimeRecordsRoot = process.env.VERCEL
 
 dotenv.config({ path: path.join(projectRoot, ".env") });
 dotenv.config();
+dotenv.config({ path: path.join(projectRoot, ".env.local") });
 
 function firstNonEmpty(...values: Array<string | undefined>): string {
   return values.find((value) => value !== undefined && value !== "") ?? "";
