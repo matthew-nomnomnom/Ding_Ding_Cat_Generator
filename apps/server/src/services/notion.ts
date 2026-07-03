@@ -1,6 +1,5 @@
 import type { StickerRecord } from "@sticker-platform/shared";
 import { readFile, stat } from "node:fs/promises";
-import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
@@ -164,8 +163,6 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const url = new URL(`https://api.notion.com/v1${pathName}`);
-      const method = init.method ?? "GET";
       const headers: Record<string, string> = {
         Authorization: `Bearer ${config.notionToken}`,
         "Notion-Version": version,
@@ -182,40 +179,17 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
         }
       }
 
-      let bodyStr: string | undefined;
-      if (typeof init.body === "string") {
-        bodyStr = init.body;
-      }
-
-      const result = await new Promise<{ status: number; data: string }>((resolve, reject) => {
-        const options: https.RequestOptions = {
-          hostname: url.hostname,
-          path: url.pathname + url.search,
-          method,
-          headers,
-          timeout: 15000,
-        };
-
-        const req = https.request(options, (res) => {
-          let data = "";
-          res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
-          res.on("end", () => resolve({ status: res.statusCode ?? 500, data }));
-        });
-
-        req.on("error", (err) => reject(err));
-        req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
-
-        if (bodyStr) {
-          req.write(bodyStr);
-        }
-        req.end();
+      const response = await fetch(`https://api.notion.com/v1${pathName}`, {
+        ...init,
+        headers,
       });
 
-      if (result.status < 200 || result.status >= 300) {
-        throw new Error(`Notion request failed with ${result.status}: ${result.data.slice(0, 500)}`);
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(`Notion request failed with ${response.status}: ${body.slice(0, 500)}`);
       }
 
-      return JSON.parse(result.data) as T;
+      return (await response.json()) as T;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {

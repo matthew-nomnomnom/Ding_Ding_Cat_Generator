@@ -430,7 +430,7 @@ stickersRouter.post("/:id/generate", async (req, res, next) => {
       referenceImageUrl: input.referenceImageUrl,
     }, "generate");
     logStickerRouteStep("generate_response_sent", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
-    res.json(withoutCandidatePreviews(generatedRecord));
+    res.json(generatedRecord);
   } catch (error) {
     logStickerRouteError("generate_failed", error, { recordId: req.params.id });
     next(error);
@@ -466,7 +466,7 @@ stickersRouter.post("/:id/refine", async (req, res, next) => {
       referenceImageUrl: input.referenceImageUrl,
     }, "refine");
     logStickerRouteStep("refine_response_sent", { recordId: record.id, elapsedMs: Date.now() - routeStartedAt });
-    res.json(withoutCandidatePreviews(generatedRecord));
+    res.json(generatedRecord);
   } catch (error) {
     logStickerRouteError("refine_failed", error, { recordId: req.params.id });
     next(error);

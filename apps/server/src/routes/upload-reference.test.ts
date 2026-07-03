@@ -111,8 +111,10 @@ describe("POST /api/stickers/upload-reference", () => {
 describe("POST /api/stickers/:id/generate", () => {
   test("returns the generated record after generation completes", async () => {
     const originalImageGenerationApiKey = config.imageGenerationApiKey;
+    const originalGptImageModel = config.gptImageModel;
     const originalImageGenerationCandidateCount = config.imageGenerationCandidateCount;
     config.imageGenerationApiKey = "";
+    config.gptImageModel = "";
     config.imageGenerationCandidateCount = 5;
 
     const server = createServer(app);
@@ -124,7 +126,7 @@ describe("POST /api/stickers/:id/generate", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          format: "svg",
+          format: "png",
           theme: "async route",
           description: "returns immediately",
         }),
@@ -144,15 +146,18 @@ describe("POST /api/stickers/:id/generate", () => {
       assert.equal(generatedRecord.result?.candidates?.length, 5);
     } finally {
       config.imageGenerationApiKey = originalImageGenerationApiKey;
+      config.gptImageModel = originalGptImageModel;
       config.imageGenerationCandidateCount = originalImageGenerationCandidateCount;
       await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     }
   });
 
-  test("generates five candidates without exposing candidate previews", async () => {
+  test("generates five candidates with candidate previews included", async () => {
     const originalImageGenerationApiKey = config.imageGenerationApiKey;
+    const originalGptImageModel = config.gptImageModel;
     const originalImageGenerationCandidateCount = config.imageGenerationCandidateCount;
     config.imageGenerationApiKey = "";
+    config.gptImageModel = "";
     config.imageGenerationCandidateCount = 5;
 
     const server = createServer(app);
@@ -164,7 +169,7 @@ describe("POST /api/stickers/:id/generate", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          format: "svg",
+          format: "png",
           theme: "async route",
           description: "polls generated result",
         }),
@@ -180,9 +185,11 @@ describe("POST /api/stickers/:id/generate", () => {
 
       assert.equal(generatedRecord.status, "generated");
       assert.equal(generatedRecord.result?.candidates?.length, 5);
-      assert.equal(generatedRecord.result?.candidatePreviews, undefined);
+      assert.ok(generatedRecord.result?.candidatePreviews, "Expected candidatePreviews to be included");
+      assert.equal(Object.keys(generatedRecord.result?.candidatePreviews ?? {}).length, 5);
     } finally {
       config.imageGenerationApiKey = originalImageGenerationApiKey;
+      config.gptImageModel = originalGptImageModel;
       config.imageGenerationCandidateCount = originalImageGenerationCandidateCount;
       await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     }
@@ -190,8 +197,10 @@ describe("POST /api/stickers/:id/generate", () => {
 
   test("starts refinement and exposes the refined result through polling", async () => {
     const originalImageGenerationApiKey = config.imageGenerationApiKey;
+    const originalGptImageModel = config.gptImageModel;
     const originalImageGenerationCandidateCount = config.imageGenerationCandidateCount;
     config.imageGenerationApiKey = "";
+    config.gptImageModel = "";
     config.imageGenerationCandidateCount = 5;
 
     const server = createServer(app);
@@ -203,7 +212,7 @@ describe("POST /api/stickers/:id/generate", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          format: "svg",
+          format: "png",
           theme: "async refine route",
           description: "polls refined result",
         }),
@@ -239,6 +248,7 @@ describe("POST /api/stickers/:id/generate", () => {
       assert.equal(refinedRecord.result?.candidates?.length, 5);
     } finally {
       config.imageGenerationApiKey = originalImageGenerationApiKey;
+      config.gptImageModel = originalGptImageModel;
       config.imageGenerationCandidateCount = originalImageGenerationCandidateCount;
       await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     }
