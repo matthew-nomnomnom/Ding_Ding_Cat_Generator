@@ -21,7 +21,7 @@ export const createStickerSchema = z.object({
 });
 
 export const stickerResultSchema = z.object({
-  provider: z.enum(["gpt-image-2", "nano-banana-2", "placeholder"]),
+  provider: z.enum(["gpt-image-2", "nano-banana-2", "gemini", "placeholder"]),
   format: stickerFormatSchema,
   localPath: z.string().optional(),
   fileUrl: z.string().optional(),
@@ -30,6 +30,8 @@ export const stickerResultSchema = z.object({
   candidateUrls: z.record(z.string()).optional(),
   candidatePreviews: z.record(z.string()).optional(),
   refinementRequirement: z.string().optional(),
+  referenceImages: z.array(z.string()).optional(),
+  prompt: z.string().optional(),
   notionPageId: z.string().optional(),
 });
 

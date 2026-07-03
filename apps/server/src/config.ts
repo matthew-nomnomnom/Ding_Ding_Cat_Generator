@@ -36,6 +36,13 @@ const imageGenerationApiUrl = firstNonEmpty(process.env.IMAGE_GENERATION_API_URL
 export const config = {
   port: Number(process.env.SERVER_PORT ?? 4000),
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
+  nanoBananaApiKey: process.env.NANO_BANANA_API_KEY ?? process.env.AI_GATEWAY_API_KEY ?? "",
+  nanoBananaApiUrl: process.env.NANO_BANANA_API_URL ?? "https://ai-gateway.vercel.sh/v1",
+  nanoBananaModel: process.env.NANO_BANANA_MODEL ?? "google/gemini-3.1-flash-image-preview",
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+  geminiModel: process.env.GEMINI_MODEL ?? "models/gemini-2.5-flash-image-preview",
+  /** GPT Image 2 via AI Gateway — no base64 refs, sends files as multipart form data. */
+  gptImageModel: process.env.GPT_IMAGE_MODEL || firstNonEmpty(process.env.IMAGE_GENERATION_MODEL, process.env.NANO_BANANA_MODEL) || "openai/gpt-image-2",
   imageGenerationApiKey,
   imageGenerationApiUrl,
   imageGenerationModel: firstNonEmpty(process.env.IMAGE_GENERATION_MODEL, process.env.NANO_BANANA_MODEL) || "openai/gpt-image-2",
