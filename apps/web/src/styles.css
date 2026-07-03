@@ -178,6 +178,27 @@ textarea {
   margin: 0;
 }
 
+.form-message.info {
+  color: var(--oliver-forest);
+  font-weight: 650;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-message.info::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--oliver-forest);
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .error {
   color: #f87171;
 }

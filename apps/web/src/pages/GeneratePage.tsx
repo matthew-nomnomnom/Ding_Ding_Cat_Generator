@@ -704,6 +704,7 @@ export function GeneratePage() {
 
           {error ? <p className="form-message error">{error}</p> : null}
           {message ? <p className="form-message success">{message}</p> : null}
+          {deciding ? <p className="form-message info">Processing your request…</p> : null}
 
           <div className="result-shell">
             {busy ? (
@@ -771,10 +772,10 @@ export function GeneratePage() {
                 ) : null}
 
                 <div className="result-actions">
-                  <button className="primary-action" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleDecision("accept")}>
-                    Accept
+                  <button className="primary-action" type="button" disabled={busy || deciding || !selectedCandidate} onClick={() => void handleDecision("accept")}>
+                    {deciding ? "Accepting…" : "Accept"}
                   </button>
-                  <button className="danger-cta" type="button" disabled={busy} onClick={() => setShowRejectModal(true)}>
+                  <button className="danger-cta" type="button" disabled={busy || deciding} onClick={() => setShowRejectModal(true)}>
                     Reject
                   </button>
                   <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
@@ -1078,8 +1079,8 @@ export function GeneratePage() {
             />
             <div className="reject-modal-actions">
               <button className="secondary-cta" type="button" onClick={() => setShowRejectModal(false)}>Cancel</button>
-              <button className="danger-cta" type="button" disabled={busy} onClick={() => void handleDecision("reject")}>
-                Confirm reject
+              <button className="danger-cta" type="button" disabled={busy || deciding} onClick={() => void handleDecision("reject")}>
+                {deciding ? "Rejecting…" : "Confirm reject"}
               </button>
             </div>
           </div>
