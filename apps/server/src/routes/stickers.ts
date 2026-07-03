@@ -8,6 +8,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { generateSticker } from "../services/nanoBanana.js";
 import { archiveNotionPage, getAvailableNotionContentName, getFilePropertyUrl, getRichTextProperty, listDataFolderRows, uploadAcceptedStickerRecord, uploadRejectedStickerRun } from "../services/notion.js";
+import { cleanupAllRuntimeFiles } from "../services/cleanup.js";
 import {
   createStickerRecord,
   deleteStickerCache,
@@ -476,6 +477,7 @@ stickersRouter.post("/:id/accept", async (req, res, next) => {
     });
 
     await deleteStickerCache(uploaded.id);
+    await cleanupAllRuntimeFiles(record);
 
     res.json({ uploaded: true, notionPageId, record: uploaded });
   } catch (error) {
@@ -497,6 +499,7 @@ stickersRouter.post("/:id/reject", async (req, res, next) => {
     const notionPageId = await uploadRejectedStickerRun(withoutCandidatePreviews(rejected), input.reason?.trim() || undefined);
 
     await deleteStickerCache(rejected.id);
+    await cleanupAllRuntimeFiles(record);
 
     res.json({ rejected: true, notionPageId });
   } catch (error) {
