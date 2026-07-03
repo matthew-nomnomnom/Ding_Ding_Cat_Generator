@@ -138,7 +138,7 @@ export function GeneratePage() {
     previews: Record<string, string>;
   }[]>([]);
   const [busy, setBusy] = useState(false);
-  const [deciding, setDeciding] = useState(false);
+  const [deciding, setDeciding] = useState<"accept" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -538,32 +538,30 @@ export function GeneratePage() {
     setError(null);
     setMessage(null);
     setShowRejectModal(false);
-    setDeciding(true);
+    setDeciding(action);
     setBusy(false);
 
     try {
       const recId = record.id;
       if (action === "reject") {
         await rejectSticker(record.id, { reason: rejectReason.trim() || undefined });
-        setRecord(null);
-        setSelectedPath(null);
         setRejectReason("");
         setMessage("Rejected. Ready for a new prompt.");
       } else {
         await acceptSticker(record.id, { selectedPath: selectedCandidate ?? undefined });
-        setRecord(null);
-        setSelectedPath(null);
         setRefinementRequirement("");
         setRejectReason("");
         setMessage("Accepted and uploaded. Ready for a new prompt.");
       }
+      setRecord(null);
+      setSelectedPath(null);
       removeSession(recId);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : `Failed to ${action} sticker`);
       setRecord(null);
       setSelectedPath(null);
     } finally {
-      setBusy(false);
+      setDeciding(null);
     }
   }
 
@@ -704,7 +702,7 @@ export function GeneratePage() {
 
           {error ? <p className="form-message error">{error}</p> : null}
           {message ? <p className="form-message success">{message}</p> : null}
-          {deciding ? <p className="form-message info">Processing your request…</p> : null}
+          {deciding ? <p className="form-message info">{deciding === "accept" ? "Accepting your image…" : "Rejecting your image…"}</p> : null}
 
           <div className="result-shell">
             {busy ? (
@@ -772,10 +770,10 @@ export function GeneratePage() {
                 ) : null}
 
                 <div className="result-actions">
-                  <button className="primary-action" type="button" disabled={busy || deciding || !selectedCandidate} onClick={() => void handleDecision("accept")}>
-                    {deciding ? "Accepting…" : "Accept"}
+                  <button className="primary-action" type="button" disabled={busy || !!deciding || !selectedCandidate} onClick={() => void handleDecision("accept")}>
+                    {deciding === "accept" ? "Accepting…" : "Accept"}
                   </button>
-                  <button className="danger-cta" type="button" disabled={busy || deciding} onClick={() => setShowRejectModal(true)}>
+                  <button className="danger-cta" type="button" disabled={busy || !!deciding} onClick={() => setShowRejectModal(true)}>
                     Reject
                   </button>
                   <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
@@ -1079,8 +1077,8 @@ export function GeneratePage() {
             />
             <div className="reject-modal-actions">
               <button className="secondary-cta" type="button" onClick={() => setShowRejectModal(false)}>Cancel</button>
-              <button className="danger-cta" type="button" disabled={busy || deciding} onClick={() => void handleDecision("reject")}>
-                {deciding ? "Rejecting…" : "Confirm reject"}
+              <button className="danger-cta" type="button" disabled={busy || !!deciding} onClick={() => void handleDecision("reject")}>
+                {deciding === "reject" ? "Rejecting…" : "Confirm reject"}
               </button>
             </div>
           </div>
