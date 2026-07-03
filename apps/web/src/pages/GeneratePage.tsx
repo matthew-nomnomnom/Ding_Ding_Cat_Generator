@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { StickerRecord } from "@sticker-platform/shared";
 import { acceptSticker, createSticker, generateSticker, listGallery, refineSticker, rejectSticker, removeGalleryItem, uploadReferenceImage } from "../lib/api";
 import type { GalleryItem } from "../lib/api";
+import { getSticker } from "../lib/api";
+import { loadSessions, removeSession, saveSession } from "../lib/sessionStore";
 
 export const FESTIVALS = [
   { id: "general", label: "General", desc: "general TramPlus sticker with Hong Kong tram culture, city motion, and clean brand energy",
@@ -159,6 +161,7 @@ export function GeneratePage() {
   const [galleryError, setGalleryError] = useState<string | null>(null);
   const [activeThemeTab, setActiveThemeTab] = useState("all");
   const [galleryLightbox, setGalleryLightbox] = useState<GalleryItem | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const galleryThemes = ["all", ...FESTIVALS.map((f) => f.id)];
 
@@ -299,6 +302,51 @@ export function GeneratePage() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [handleEscape]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    const saved = loadSessions();
+    if (saved.length === 0) return;
+    void (async () => {
+      const restored: Array<{
+        previewUrl: string;
+        description: string;
+        subtitle: string;
+        time: number;
+        record: StickerRecord;
+        previews: Record<string, string>;
+      }> = [];
+      for (const session of saved) {
+        try {
+          const rec = await getSticker(session.id);
+          if (rec && rec.status !== "rejected" && rec.status !== "failed" && rec.result?.candidates?.length) {
+            restored.push({
+              previewUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+              description: session.prompt,
+              subtitle: session.festival || session.quickPick,
+              time: session.time,
+              record: rec,
+              previews: {},
+            });
+          }
+        } catch {
+          // record no longer exists, skip
+        }
+      }
+      if (restored.length > 0) {
+        setRefineHistory((prev) => {
+          const existing = new Set(prev.map((h) => h.record.id));
+          const merged = [...restored.filter((r) => !existing.has(r.record.id)), ...prev];
+          return merged;
+        });
+      }
+    })();
+  }, []);
+
   function handleDragEnter(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -387,6 +435,9 @@ export function GeneratePage() {
         record: generatedRecord,
         previews: { ...previewsRef.current },
       }, ...prev]);
+      const genTime = Date.now();
+      saveSession({ id: generatedRecord.id, prompt, festival: festivalId, quickPick, time: genTime });
+      setToast("Session saved — restore it after refresh");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to generate sticker");
     } finally {
@@ -488,6 +539,7 @@ export function GeneratePage() {
     setShowRejectModal(false);
 
     try {
+      const recId = record.id;
       if (action === "reject") {
         await rejectSticker(record.id, { reason: rejectReason.trim() || undefined });
         setRecord(null);
@@ -502,6 +554,7 @@ export function GeneratePage() {
         setRejectReason("");
         setMessage("Accepted and uploaded. Ready for a new prompt.");
       }
+      removeSession(recId);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : `Failed to ${action} sticker`);
     } finally {
@@ -822,7 +875,7 @@ export function GeneratePage() {
             </div>
 
             {galleryLoading ? (
-              <div className="loading-state">
+              <div className="loading-state gallery-loading">
                 <div className="spinner" />
                 <p>Loading accepted stickers...</p>
               </div>
@@ -957,6 +1010,13 @@ export function GeneratePage() {
       )}
 
       <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</footer>
+
+      {toast ? (
+        <div className="toast" onClick={() => setToast(null)}>
+          <span className="toast-icon">✓</span>
+          <span className="toast-text">{toast}</span>
+        </div>
+      ) : null}
 
       {lightboxImage ? (
         <div className="lightbox-overlay" onClick={() => setLightboxImage(null)}>
