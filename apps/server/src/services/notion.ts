@@ -1,5 +1,6 @@
 import type { StickerRecord } from "@sticker-platform/shared";
 import { readFile, stat } from "node:fs/promises";
+import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
@@ -158,17 +159,63 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
     throw new Error("NOTION_TOKEN is not configured");
   }
 
+  if (init.body instanceof FormData) {
+    let formError: Error | undefined;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(`https://api.notion.com/v1${pathName}`, {
+          ...init,
+          headers: {
+            Authorization: `Bearer ${config.notionToken}`,
+            "Notion-Version": version,
+            ...init.headers,
+          },
+        });
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(`Notion request failed with ${response.status}: ${body.slice(0, 500)}`);
+        }
+        return (await response.json()) as T;
+      } catch (error) {
+        formError = error instanceof Error ? error : new Error(String(error));
+        if (attempt >= 3) throw formError;
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+      }
+    }
+    throw formError!;
+  }
+
   const maxRetries = 3;
   let lastError: Error | undefined;
 
+  // Serialize body upfront so FormData gets converted to a real buffer with
+  // proper multipart boundaries.  Raw node:https cannot serialize FormData,
+  // which causes Notion to reject /file_uploads requests with:
+  //   "body.file should be defined, instead was 'undefined'"
+  let bodyBuffer: Buffer | undefined;
+  let bodyContentType: string | undefined;
+
+  if (init.body instanceof FormData) {
+    const formResponse = new Response(init.body);
+    bodyBuffer = Buffer.from(await formResponse.arrayBuffer());
+    bodyContentType = formResponse.headers.get("content-type") ?? "multipart/form-data";
+  } else if (typeof init.body === "string") {
+    bodyBuffer = Buffer.from(init.body, "utf8");
+    bodyContentType = "application/json";
+  }
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      const url = new URL(`https://api.notion.com/v1${pathName}`);
+      const method = init.method ?? "GET";
       const headers: Record<string, string> = {
         Authorization: `Bearer ${config.notionToken}`,
         "Notion-Version": version,
       };
 
-      if (!(init.body instanceof FormData)) {
+      if (bodyContentType) {
+        headers["Content-Type"] = bodyContentType;
+      } else if (init.body) {
         headers["Content-Type"] = "application/json";
       }
 
@@ -179,17 +226,35 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
         }
       }
 
-      const response = await fetch(`https://api.notion.com/v1${pathName}`, {
-        ...init,
-        headers,
+      const result = await new Promise<{ status: number; data: string }>((resolve, reject) => {
+        const options: https.RequestOptions = {
+          hostname: url.hostname,
+          path: url.pathname + url.search,
+          method,
+          headers,
+          timeout: 15000,
+        };
+
+        const req = https.request(options, (res) => {
+          let data = "";
+          res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+          res.on("end", () => resolve({ status: res.statusCode ?? 500, data }));
+        });
+
+        req.on("error", (err) => reject(err));
+        req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
+
+        if (bodyBuffer) {
+          req.write(bodyBuffer);
+        }
+        req.end();
       });
 
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(`Notion request failed with ${response.status}: ${body.slice(0, 500)}`);
+      if (result.status < 200 || result.status >= 300) {
+        throw new Error(`Notion request failed with ${result.status}: ${result.data.slice(0, 500)}`);
       }
 
-      return (await response.json()) as T;
+      return JSON.parse(result.data) as T;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {

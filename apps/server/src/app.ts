@@ -55,7 +55,13 @@ app.use("/api/notion", notionRouter);
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof ZodError) {
-    res.status(400).json({ error: "Invalid request", issues: error.issues });
+    const message = error.issues
+      .map((issue) => {
+        const path = issue.path.length > 0 ? `'${issue.path.join(".")}': ` : "";
+        return `${path}${issue.message}`;
+      })
+      .join("; ");
+    res.status(400).json({ error: message || "Invalid request", issues: error.issues });
     return;
   }
 

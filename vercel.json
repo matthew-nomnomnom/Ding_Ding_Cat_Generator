@@ -3,6 +3,11 @@
   "buildCommand": "npm run build --workspace packages/shared && npm run build --workspace apps/web",
   "outputDirectory": "apps/web/dist",
   "installCommand": "npm install",
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/runtime/generated/(.*)", "destination": "/api/runtime/generated/$1" },
