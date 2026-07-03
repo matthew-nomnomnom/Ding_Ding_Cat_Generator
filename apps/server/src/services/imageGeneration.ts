@@ -88,6 +88,8 @@ type GenerateOptions = {
   refinementRequirement?: string;
   referenceImagePath?: string;
   referenceImageUrl?: string;
+  readCanonicalReferenceBlob?: (pathname: string) => Promise<Buffer | undefined>;
+  readSelectedImageBlob?: (pathname: string) => Promise<Buffer | undefined>;
   onProgress?: (current: number, total: number, candidatePath: string, previewDataUrl: string) => void;
 };
 
