@@ -1010,15 +1010,26 @@ export function GeneratePage() {
                         {rec.description.length > 40 ? "…" : ""}
                       </div>
                       {imgUrl ? (
-                        <button
-                          className="card-download-btn"
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
-                          title="Download"
-                          aria-label="Download image"
-                        >
-                          Download
-                        </button>
+                        <>
+                          <button
+                            className="card-download-btn"
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
+                            title="Download"
+                            aria-label="Download image"
+                          >
+                            Download
+                          </button>
+                          <button
+                            className="card-delete-btn"
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteGalleryItem(rec); }}
+                            title="Delete"
+                            aria-label="Delete image"
+                          >
+                            Delete
+                          </button>
+                        </>
                       ) : null}
                     </button>
                   );
