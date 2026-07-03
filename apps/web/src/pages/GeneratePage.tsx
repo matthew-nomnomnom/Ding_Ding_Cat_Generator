@@ -540,6 +540,7 @@ export function GeneratePage() {
     setMessage(null);
     setShowRejectModal(false);
     setDeciding(true);
+    setBusy(false);
 
     try {
       if (action === "reject") {
@@ -557,6 +558,8 @@ export function GeneratePage() {
       removeSession(recId);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : `Failed to ${action} sticker`);
+      setRecord(null);
+      setSelectedPath(null);
     } finally {
       setDeciding(false);
     }

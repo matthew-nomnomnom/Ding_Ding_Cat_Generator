@@ -159,6 +159,30 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
     throw new Error("NOTION_TOKEN is not configured");
   }
 
+  if (init.body instanceof FormData) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(`https://api.notion.com/v1${pathName}`, {
+          ...init,
+          headers: {
+            Authorization: `Bearer ${config.notionToken}`,
+            "Notion-Version": version,
+            ...init.headers,
+          },
+        });
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(`Notion request failed with ${response.status}: ${body.slice(0, 500)}`);
+        }
+        return (await response.json()) as T;
+      } catch (error) {
+        if (attempt >= 3) throw error instanceof Error ? error : new Error(String(error));
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+      }
+    }
+    throw lastError!;
+  }
+
   const maxRetries = 3;
   let lastError: Error | undefined;
 
