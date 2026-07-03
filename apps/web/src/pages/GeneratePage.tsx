@@ -411,9 +411,7 @@ export function GeneratePage() {
 
       let refPath: string | undefined;
       let refUrl: string | undefined;
-      let historyPreviewUrl: string | null = null;
       if (pendingPhoto) {
-        historyPreviewUrl = photoPreview;
         const uploaded = await uploadReferenceImage(pendingPhoto.fileName, pendingPhoto.dataUrl, theme, prompt);
         refPath = uploaded.path;
         refUrl = uploaded.blobPathname;
@@ -429,10 +427,12 @@ export function GeneratePage() {
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
+      const firstCandidatePath = generatedRecord.result?.candidates?.[0];
+      const firstPreview = firstCandidatePath ? previewsRef.current[firstCandidatePath] : null;
       setRefineHistory((prev) => [{
-        previewUrl: historyPreviewUrl || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        previewUrl: firstPreview || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
         description: prompt,
-        subtitle: historyPreviewUrl ? "Reference image" : prompt,
+        subtitle: prompt.slice(0, 40),
         time: Date.now(),
         record: generatedRecord,
         previews: { ...previewsRef.current },
@@ -1051,7 +1051,7 @@ export function GeneratePage() {
         </section>
       )}
 
-      <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</footer>
+      <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator</footer>
 
       {toast ? (
         <div className="toast" onClick={() => setToast(null)}>
