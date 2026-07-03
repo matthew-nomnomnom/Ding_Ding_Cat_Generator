@@ -47,7 +47,7 @@ export const config = {
   imageGenerationApiKey,
   imageGenerationApiUrl,
   imageGenerationModel: firstNonEmpty(process.env.IMAGE_GENERATION_MODEL, process.env.NANO_BANANA_MODEL) || "openai/gpt-image-2",
-  imageGenerationCandidateCount: Number(firstNonEmpty(process.env.IMAGE_GENERATION_CANDIDATE_COUNT) || 5),
+  imageGenerationCandidateCount: Number(firstNonEmpty(process.env.IMAGE_GENERATION_CANDIDATE_COUNT) || 1),
   imageGenerationConcurrency: positiveNumberOrDefault(firstNonEmpty(process.env.IMAGE_GENERATION_CONCURRENCY), 2),
   imageGenerationBaselineReferenceCount: positiveNumberOrDefault(firstNonEmpty(process.env.IMAGE_GENERATION_BASELINE_REFERENCE_COUNT), 1),
   canonicalReferenceBlobPathname: firstNonEmpty(process.env.CANONICAL_REFERENCE_BLOB_PATHNAME) || "baseline/ding-ding-cat/turnaround.png",
