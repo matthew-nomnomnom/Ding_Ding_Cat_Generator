@@ -109,18 +109,29 @@ describe("generate and refine synchronous-first flow", () => {
     assert.match(source, /method: "POST"/);
   });
 
-  test("pollGeneratedSticker rejects when deadline is exceeded", async () => {
+  test("pollGeneratedSticker polls indefinitely while generating and stops on terminal status", async () => {
     const createPollGeneratedSticker = await loadPollGeneratedSticker();
-    let elapsed = 0;
+    const records = [{ status: "generating" }, { status: "generating" }, { status: "generated", result: { candidates: ["a"] } }];
+    let pollCount = 0;
+    let waitCount = 0;
     const pollGeneratedSticker = createPollGeneratedSticker(
-      async () => ({ status: "generating" }),
-      async () => { elapsed += 2_000; },
-      {
-        now() { return elapsed; },
+      async () => {
+        const record = records[pollCount++];
+        if (!record) {
+          throw new Error("Unexpected extra poll");
+        }
+        return record;
       },
+      async () => {
+        waitCount += 1;
+      },
+      { now: () => 0 },
     );
 
-    await assert.rejects(() => pollGeneratedSticker("sticker-1"), /Generation timed out/);
+    const result = await pollGeneratedSticker("sticker-1");
+    assert.equal(pollCount, 3);
+    assert.equal(waitCount, 2);
+    assert.equal(result.status, "generated");
   });
 });
 
