@@ -6,6 +6,8 @@ import { config } from "../config.js";
 import { BASELINE_REFERENCE_NAMES, listBaselineReferenceUrls, listDataFolderFileUrls, listSupplementalBaselineUrls } from "./notion.js";
 import { readRuntimeBlob, uploadRuntimeCandidateBlob } from "./runtimeBlob.js";
 
+const GENERATION_FETCH_TIMEOUT_MS = 120_000; // 2 minutes per external API call
+
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const generatedRoot = path.join(projectRoot, "data/generated");
 const runtimeGeneratedRoot = config.runtimeGeneratedRoot;
@@ -139,6 +141,7 @@ async function uploadBufferToGemini(buffer: Buffer, mimeType: string, displayNam
         "X-Goog-Upload-Command": "upload, finalize",
       },
       body: buffer,
+      signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -161,13 +164,7 @@ async function uploadBufferToGemini(buffer: Buffer, mimeType: string, displayNam
  * as well as any other public image URL via a plain GET request.
  */
 async function fetchImageUrl(url: string): Promise<{ buffer: Buffer; contentType: string } | undefined> {
-  const response = await fetch(url);
-  if (!response.ok) return undefined;
-
-  const contentType = response.headers.get("content-type")?.split(";")[0] ?? "image/png";
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return { buffer, contentType };
-}
+  const response = await fetch(url, { signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS) });
 
 /**
  * Upload an image source (local file path or HTTP URL) to Gemini File API.
@@ -221,6 +218,7 @@ async function geminiGenerateContent(
         contents: [{ parts }],
         generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
       }),
+      signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
     },
   );
 
@@ -332,6 +330,7 @@ async function generateWithGptImage2(
       Authorization: `Bearer ${apiKey}`,
     },
     body: formData,
+    signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -346,7 +345,7 @@ async function generateWithGptImage2(
   if (b64) {
     await writeFile(outputPath, Buffer.from(b64, "base64"));
   } else if (item?.url) {
-    const imgResponse = await fetch(item.url);
+    const imgResponse = await fetch(item.url, { signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS) });
     if (!imgResponse.ok) throw new Error(`Failed to download generated image from ${item.url}`);
     const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
     await writeFile(outputPath, imgBuffer);
@@ -792,6 +791,7 @@ async function generateWithImageProvider(
       modalities: ["image"],
       n: 1,
     }),
+    signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
