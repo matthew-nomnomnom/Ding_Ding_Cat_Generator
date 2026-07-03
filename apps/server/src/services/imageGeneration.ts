@@ -326,18 +326,13 @@ async function generateWithGptImage2(
     );
   }
 
-  // 90-second timeout per candidate to prevent hanging on network issues
-  const controller = new AbortController();
-  const abortTimer = setTimeout(() => controller.abort(), 90_000);
-
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}/images/edits`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
     body: formData,
-    signal: controller.signal,
-  }).finally(() => clearTimeout(abortTimer));
+  });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

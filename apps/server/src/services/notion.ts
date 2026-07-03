@@ -162,6 +162,22 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
   const maxRetries = 3;
   let lastError: Error | undefined;
 
+  // Serialize body upfront so FormData gets converted to a real buffer with
+  // proper multipart boundaries.  Raw node:https cannot serialize FormData,
+  // which causes Notion to reject /file_uploads requests with:
+  //   "body.file should be defined, instead was 'undefined'"
+  let bodyBuffer: Buffer | undefined;
+  let bodyContentType: string | undefined;
+
+  if (init.body instanceof FormData) {
+    const formResponse = new Response(init.body);
+    bodyBuffer = Buffer.from(await formResponse.arrayBuffer());
+    bodyContentType = formResponse.headers.get("content-type") ?? "multipart/form-data";
+  } else if (typeof init.body === "string") {
+    bodyBuffer = Buffer.from(init.body, "utf8");
+    bodyContentType = "application/json";
+  }
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const url = new URL(`https://api.notion.com/v1${pathName}`);
@@ -171,7 +187,9 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
         "Notion-Version": version,
       };
 
-      if (!(init.body instanceof FormData)) {
+      if (bodyContentType) {
+        headers["Content-Type"] = bodyContentType;
+      } else if (init.body) {
         headers["Content-Type"] = "application/json";
       }
 
@@ -180,11 +198,6 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
         for (const key of Object.keys(h)) {
           headers[key] = h[key];
         }
-      }
-
-      let bodyStr: string | undefined;
-      if (typeof init.body === "string") {
-        bodyStr = init.body;
       }
 
       const result = await new Promise<{ status: number; data: string }>((resolve, reject) => {
@@ -205,8 +218,8 @@ async function notionRequest<T>(pathName: string, init: RequestInit = {}, versio
         req.on("error", (err) => reject(err));
         req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
 
-        if (bodyStr) {
-          req.write(bodyStr);
+        if (bodyBuffer) {
+          req.write(bodyBuffer);
         }
         req.end();
       });

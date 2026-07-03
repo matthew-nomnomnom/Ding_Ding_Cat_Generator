@@ -1,4 +1,10 @@
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
+
+// Build shared package first — server depends on its compiled output
+execSync("npm run build --workspace packages/shared", {
+  cwd: process.cwd(),
+  stdio: "inherit",
+});
 
 const commands = [
   { name: "server", args: ["run", "dev:server"] },

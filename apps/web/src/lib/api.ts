@@ -1,7 +1,6 @@
 import type { CreateStickerInput, StickerRecord } from "@sticker-platform/shared";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
-const streamRecoveryTimeoutMs = 20 * 60 * 1000;
 const streamRecoveryPollMs = 2_000;
 
 function wait(ms: number): Promise<void> {
@@ -22,8 +21,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? `Request failed with ${response.status}`);
+    const body = (await response.json().catch(() => null)) as { error?: string; issues?: Array<{ path: Array<string | number>; message: string }> } | null;
+    const message =
+      body?.error ??
+      body?.issues?.map((issue) => {
+        const path = issue.path.length > 0 ? `'${issue.path.join(".")}': ` : "";
+        return `${path}${issue.message}`;
+      }).join("; ") ??
+      `Request failed with ${response.status}`;
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;
@@ -57,9 +63,7 @@ function isGenerationInProgress(record: StickerRecord): boolean {
 }
 
 async function pollGeneratedSticker(id: string): Promise<StickerRecord> {
-  const deadline = Date.now() + streamRecoveryTimeoutMs;
-
-  while (Date.now() < deadline) {
+  while (true) {
     const record = await getSticker(id);
 
     if (record.status === "generated" && record.result?.candidates?.length) {
@@ -72,8 +76,6 @@ async function pollGeneratedSticker(id: string): Promise<StickerRecord> {
 
     await wait(streamRecoveryPollMs);
   }
-
-  throw new Error("Generation timed out while waiting for generated candidates. Check the server terminal logs for background_generation_* entries.");
 }
 
 function startGeneration(id: string, input?: { theme?: string; description?: string; referenceImagePath?: string; referenceImageUrl?: string }): Promise<StickerRecord> {

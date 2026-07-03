@@ -138,7 +138,6 @@ export function GeneratePage() {
     previews: Record<string, string>;
   }[]>([]);
   const [busy, setBusy] = useState(false);
-  const [deciding, setDeciding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -411,7 +410,9 @@ export function GeneratePage() {
 
       let refPath: string | undefined;
       let refUrl: string | undefined;
+      let historyPreviewUrl: string | null = null;
       if (pendingPhoto) {
+        historyPreviewUrl = photoPreview;
         const uploaded = await uploadReferenceImage(pendingPhoto.fileName, pendingPhoto.dataUrl, theme, prompt);
         refPath = uploaded.path;
         refUrl = uploaded.blobPathname;
@@ -427,12 +428,10 @@ export function GeneratePage() {
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
-      const firstCandidatePath = generatedRecord.result?.candidates?.[0];
-      const firstPreview = firstCandidatePath ? previewsRef.current[firstCandidatePath] : null;
       setRefineHistory((prev) => [{
-        previewUrl: firstPreview || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        previewUrl: historyPreviewUrl || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
         description: prompt,
-        subtitle: prompt.slice(0, 40),
+        subtitle: historyPreviewUrl ? "Reference image" : prompt,
         time: Date.now(),
         record: generatedRecord,
         previews: { ...previewsRef.current },
@@ -533,32 +532,34 @@ export function GeneratePage() {
   }
 
   async function handleDecision(action: "accept" | "reject") {
-    if (!record || deciding) return;
+    if (!record) return;
 
-    const recId = record.id;
     setError(null);
     setMessage(null);
+    setBusy(true);
     setShowRejectModal(false);
-    setDeciding(true);
 
     try {
+      const recId = record.id;
       if (action === "reject") {
         await rejectSticker(record.id, { reason: rejectReason.trim() || undefined });
+        setRecord(null);
+        setSelectedPath(null);
         setRejectReason("");
         setMessage("Rejected. Ready for a new prompt.");
       } else {
         await acceptSticker(record.id, { selectedPath: selectedCandidate ?? undefined });
+        setRecord(null);
+        setSelectedPath(null);
         setRefinementRequirement("");
         setRejectReason("");
         setMessage("Accepted and uploaded. Ready for a new prompt.");
       }
-      setRecord(null);
-      setSelectedPath(null);
       removeSession(recId);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : `Failed to ${action} sticker`);
     } finally {
-      setDeciding(false);
+      setBusy(false);
     }
   }
 
@@ -766,10 +767,10 @@ export function GeneratePage() {
                 ) : null}
 
                 <div className="result-actions">
-                  <button className="primary-action" type="button" disabled={busy || deciding || !selectedCandidate} onClick={() => void handleDecision("accept")}>
-                    {deciding ? "Processing…" : "Accept"}
+                  <button className="primary-action" type="button" disabled={busy || !selectedCandidate} onClick={() => void handleDecision("accept")}>
+                    Accept
                   </button>
-                  <button className="danger-cta" type="button" disabled={busy || deciding} onClick={() => setShowRejectModal(true)}>
+                  <button className="danger-cta" type="button" disabled={busy} onClick={() => setShowRejectModal(true)}>
                     Reject
                   </button>
                   <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
@@ -955,26 +956,15 @@ export function GeneratePage() {
                                   <div className="accepted-placeholder">No image</div>
                                 )}
                                 {imgUrl ? (
-                                  <>
-                                    <button
-                                      className="card-download-btn"
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
-                                      title="Download"
-                                      aria-label="Download image"
-                                    >
-                                      Download
-                                    </button>
-                                    <button
-                                      className="card-delete-btn"
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); handleDeleteGalleryItem(rec); }}
-                                      title="Delete"
-                                      aria-label="Delete image"
-                                    >
-                                      Delete
-                                    </button>
-                                  </>
+                                  <button
+                                    className="card-download-btn"
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
+                                    title="Download"
+                                    aria-label="Download image"
+                                  >
+                                    Download
+                                  </button>
                                 ) : null}
                               </button>
                             );
@@ -1021,26 +1011,15 @@ export function GeneratePage() {
                         {rec.description.length > 40 ? "…" : ""}
                       </div>
                       {imgUrl ? (
-                        <>
-                          <button
-                            className="card-download-btn"
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
-                            title="Download"
-                            aria-label="Download image"
-                          >
-                            Download
-                          </button>
-                          <button
-                            className="card-delete-btn"
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteGalleryItem(rec); }}
-                            title="Delete"
-                            aria-label="Delete image"
-                          >
-                            Delete
-                          </button>
-                        </>
+                        <button
+                          className="card-download-btn"
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDownload(imgUrl, rec.description + ".png"); }}
+                          title="Download"
+                          aria-label="Download image"
+                        >
+                          Download
+                        </button>
                       ) : null}
                     </button>
                   );
@@ -1051,7 +1030,7 @@ export function GeneratePage() {
         </section>
       )}
 
-      <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator</footer>
+      <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</footer>
 
       {toast ? (
         <div className="toast" onClick={() => setToast(null)}>
@@ -1095,8 +1074,8 @@ export function GeneratePage() {
             />
             <div className="reject-modal-actions">
               <button className="secondary-cta" type="button" onClick={() => setShowRejectModal(false)}>Cancel</button>
-              <button className="danger-cta" type="button" disabled={busy || deciding} onClick={() => void handleDecision("reject")}>
-                {deciding ? "Processing…" : "Confirm reject"}
+              <button className="danger-cta" type="button" disabled={busy} onClick={() => void handleDecision("reject")}>
+                Confirm reject
               </button>
             </div>
           </div>
