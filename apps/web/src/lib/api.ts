@@ -86,9 +86,9 @@ function startGeneration(id: string, input?: { theme?: string; description?: str
 export async function generateSticker(
   id: string,
   onProgress: (current: number, total: number, candidate: string, preview?: string) => void,
-  input?: { theme?: string; description?: string; referenceImagePath?: string; referenceImageUrl?: string },
+  input?: { theme?: string; description?: string; referenceImagePath?: string; referenceImageUrl?: string; count?: number },
 ): Promise<StickerRecord> {
-  onProgress(0, 5, "");
+  onProgress(0, input?.count ?? 5, "");
   const started = await startGeneration(id, input);
 
   if (started.status === "generated" && started.result?.candidates?.length) {

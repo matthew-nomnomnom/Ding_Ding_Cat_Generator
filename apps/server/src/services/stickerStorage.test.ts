@@ -32,7 +32,7 @@ describe("stickerStorage", () => {
   test("keeps draft records in memory and persists JSON only on accept", async () => {
     const suffix = randomUUID();
     const record = await createStickerRecord({
-      format: "svg",
+      format: "png",
       theme: `test theme ${suffix}`,
       description: "storage lifecycle test",
     });
@@ -63,7 +63,7 @@ describe("stickerStorage", () => {
   test("allows duplicate motions and persists them with indexed cache paths", async () => {
     const suffix = randomUUID();
     const input = {
-      format: "svg" as const,
+      format: "png" as const,
       theme: `duplicate ${suffix}`,
       description: "duplicate test",
     };
@@ -83,14 +83,14 @@ describe("stickerStorage", () => {
   test("matches history motion name to accepted generated image name", async () => {
     const suffix = randomUUID();
     const record = await createStickerRecord({
-      format: "svg",
+      format: "png",
       theme: `history ${suffix}`,
       description: "dance",
     });
     const updated = await updateStickerRecord(record.id, {
       result: {
         provider: "gpt-image-2",
-        format: "svg",
+        format: "png",
         localPath: `data/generated/history_${slugify(suffix)}/dance_2.png`,
       },
     });

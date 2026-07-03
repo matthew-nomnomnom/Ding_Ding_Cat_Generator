@@ -96,6 +96,7 @@ const generateStickerInputSchema = z.object({
   description: z.string().min(1).optional(),
   referenceImagePath: z.string().min(1).optional(),
   referenceImageUrl: z.string().min(1).optional(),
+  count: z.number().min(1).max(5).optional(),
 });
 
 const refineStickerSchema = z.object({
@@ -411,7 +412,7 @@ stickersRouter.post("/:id/generate", async (req, res, next) => {
 
     if (!record) {
       if (input.theme && input.description) {
-        record = await createStickerRecord({ format: "svg", theme: input.theme, description: input.description });
+        record = await createStickerRecord({ format: "png", theme: input.theme, description: input.description });
       } else {
         res.status(404).json({ error: "Sticker record not found" });
         return;
@@ -424,7 +425,7 @@ stickersRouter.post("/:id/generate", async (req, res, next) => {
     await updateStickerRecord(record.id, { status: "generating", error: undefined, result: undefined });
     logStickerRouteStep("generate_record_marked_generating", { recordId: record.id });
     const generatedRecord = await runGeneration(record, {
-      count: config.imageGenerationCandidateCount,
+      count: input.count ?? config.imageGenerationCandidateCount,
       referenceImagePath: input.referenceImagePath,
       referenceImageUrl: input.referenceImageUrl,
     }, "generate");

@@ -51,7 +51,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "gpt-image-2-test",
-      format: "svg",
+      format: "png",
       theme: "test theme",
       description: "wave hello",
       status: "generating",
@@ -102,7 +102,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "partial-success-test",
-      format: "svg",
+      format: "png",
       theme: "partial success",
       description: "one model request fails",
       status: "generating",
@@ -142,7 +142,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "parallel-candidates-test",
-      format: "svg",
+      format: "png",
       theme: "parallel candidates",
       description: "speed up generation",
       status: "generating",
@@ -195,7 +195,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "serial-edit-test",
-      format: "svg",
+      format: "png",
       theme: "serial edit",
       description: "avoid concurrent edits",
       status: "generating",
@@ -223,7 +223,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "socket-failure-test",
-      format: "svg",
+      format: "png",
       theme: "socket failure",
       description: "all provider requests fail",
       status: "generating",
@@ -252,7 +252,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "long-socket-failure-test",
-      format: "svg",
+      format: "png",
       theme: "socket failure",
       description: "provider times out slowly",
       status: "generating",
@@ -281,7 +281,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "log-test-gpt-image-2",
-      format: "svg",
+      format: "png",
       theme: "debug logs",
       description: "terminal progress",
       status: "generating",
@@ -332,7 +332,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "gpt-image-2-reference-test",
-      format: "svg",
+      format: "png",
       theme: "reference test theme",
       description: "use mascot reference",
       status: "generating",
@@ -387,7 +387,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "canonical-read-failure-test",
-      format: "svg",
+      format: "png",
       theme: "canonical read failure",
       description: "fallback to baseline",
       status: "generating",
@@ -436,7 +436,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "canonical-reference-test",
-      format: "svg",
+      format: "png",
       theme: "canonical reference",
       description: "use canonical mascot sheet",
       status: "generating",
@@ -489,7 +489,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "refine-selected-only-test",
-      format: "svg",
+      format: "png",
       theme: "refine selected only",
       description: "make the lantern bigger",
       status: "generating",
@@ -541,7 +541,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "blob-backed-refine-test",
-      format: "svg",
+      format: "png",
       theme: "blob backed refine",
       description: "refine from blob",
       status: "generating",
@@ -590,7 +590,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "missing-refine-reference-test",
-      format: "svg",
+      format: "png",
       theme: "missing refine reference",
       description: "refine unavailable selected candidate",
       status: "generating",
@@ -629,7 +629,7 @@ describe("generateSticker", () => {
 
     const record: StickerRecord = {
       id: "refine-prompt-reference-test",
-      format: "svg",
+      format: "png",
       theme: "refine prompt reference",
       description: "refine selected candidate only",
       status: "generating",

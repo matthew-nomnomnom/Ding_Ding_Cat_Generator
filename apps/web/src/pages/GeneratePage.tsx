@@ -124,7 +124,8 @@ export function GeneratePage() {
   const [pageView, setPageView] = useState<"generator" | "gallery">("generator");
   const [festivalId, setFestivalId] = useState("");
   const [quickPick, setQuickPick] = useState("");
-  const [format, setFormat] = useState<"SVG" | "GIF">("SVG");
+  const [format, setFormat] = useState<"PNG" | "GIF">("PNG");
+  const [candidateCount, setCandidateCount] = useState(5);
   const [description, setDescription] = useState("");
   const [record, setRecord] = useState<StickerRecord | null>(null);
   const [candidatePreviews, setCandidatePreviews] = useState<Record<string, string>>({});
@@ -405,7 +406,7 @@ export function GeneratePage() {
     setCandidatePreviews({});
 
     try {
-      const createdRecord = await createSticker({ format: "svg", theme, description: prompt });
+      const createdRecord = await createSticker({ format: format.toLowerCase() as "png" | "gif", theme, description: prompt });
 
       let refPath: string | undefined;
       let refUrl: string | undefined;
@@ -423,7 +424,7 @@ export function GeneratePage() {
           previewsRef.current[candidate] = preview;
           setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
         }
-      }, { theme, description: prompt, referenceImagePath: refPath, referenceImageUrl: refUrl });
+      }, { theme, description: prompt, referenceImagePath: refPath, referenceImageUrl: refUrl, count: candidateCount });
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
@@ -461,12 +462,12 @@ export function GeneratePage() {
           previewsRef.current[candidate] = preview;
           setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
         }
-      }, { theme, description: record.description });
+      }, { theme, description: record.description, count: candidateCount });
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
       setRefinementRequirement("");
-      setMessage("Generated five new candidates.");
+      setMessage(`Generated ${candidateCount} new candidate${candidateCount !== 1 ? "s" : ""}.`);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to regenerate candidates");
     } finally {
@@ -657,11 +658,26 @@ export function GeneratePage() {
                 <select
                   className="gen-select"
                   value={format}
-                  onChange={(e) => setFormat(e.target.value as "SVG" | "GIF")}
+                  onChange={(e) => setFormat(e.target.value as "PNG" | "GIF")}
                   disabled={busy}
                 >
-                  <option value="SVG">SVG</option>
+                  <option value="PNG">PNG</option>
                   <option value="GIF">GIF</option>
+                </select>
+              </div>
+              <div className="gen-field">
+                <span>Count</span>
+                <select
+                  className="gen-select"
+                  value={candidateCount}
+                  onChange={(e) => setCandidateCount(Number(e.target.value))}
+                  disabled={busy}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
                 </select>
               </div>
             </div>
@@ -693,7 +709,12 @@ export function GeneratePage() {
               </div>
             ) : record && record.result?.candidates?.length ? (
               <div className="result-view">
-                <div className="candidate-grid">
+                <div
+                  className="candidate-grid"
+                  style={{
+                    gridTemplateColumns: `repeat(${record.result.candidates.length}, minmax(0, 1fr))`,
+                  }}
+                >
                   {record.result.candidates.map((candidatePath, index) => {
                     const candidateUrl = getCandidatePreviewUrl(record, candidatePath, candidatePreviews);
                     const isSelected = candidatePath === (selectedPath ?? record.result?.selectedPath ?? record.result?.candidates?.[0]);
@@ -753,7 +774,7 @@ export function GeneratePage() {
                     Reject
                   </button>
                   <button className="secondary-cta" type="button" disabled={busy} onClick={() => void handleRegenerate()}>
-                    {busy ? "Regenerating…" : "Regenerate five"}
+                    {busy ? "Regenerating…" : "Regenerate"}
                   </button>
                   {selectedCandidate ? (
                     <a className="download" href={getCandidatePreviewUrl(record, selectedCandidate, candidatePreviews)} download>

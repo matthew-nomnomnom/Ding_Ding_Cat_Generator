@@ -541,7 +541,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
       ? `candidate-${String(index).padStart(2, "0")}.png`
       : record.format === "gif"
         ? `candidate-${String(index).padStart(2, "0")}.gif`
-        : `candidate-${String(index).padStart(2, "0")}.svg`;
+        : `candidate-${String(index).padStart(2, "0")}.png`;
     const absolutePath = path.join(trialDirectory, fileName);
 
     if (config.imageGenerationApiKey) {

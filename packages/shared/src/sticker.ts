@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const stickerFormatSchema = z.enum(["svg", "gif"]);
+export const stickerFormatSchema = z.enum(["png", "gif"]);
 
 export const stickerStatusSchema = z.enum([
   "pending",
