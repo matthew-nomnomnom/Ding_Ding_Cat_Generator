@@ -4,8 +4,9 @@ import { describe, test } from "node:test";
 
 async function loadPollGeneratedSticker() {
   const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
-  const inProgressFunction = source.match(/function isGenerationInProgress[\s\S]*?\n}\n/)?.[0];
-  const pollFunction = source.match(/async function pollGeneratedSticker[\s\S]*?\n}\n/)?.[0];
+  const normalized = source.replace(/\r\n/g, "\n");
+  const inProgressFunction = normalized.match(/function isGenerationInProgress[\s\S]*?\n}\n/)?.[0];
+  const pollFunction = normalized.match(/async function pollGeneratedSticker[\s\S]*?\n}\n/)?.[0];
 
   assert.ok(inProgressFunction);
   assert.ok(pollFunction);
@@ -66,5 +67,96 @@ describe("generation polling API", () => {
     await assert.rejects(() => pollGeneratedSticker("sticker-1"), /Generation stopped with status approved/);
     assert.equal(pollCount, 2);
     assert.equal(waitCount, 1);
+  });
+});
+
+describe("generate and refine synchronous-first flow", () => {
+  test("generateSticker returns early when already generated with candidates", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.match(source, /export async function generateSticker\(/);
+    assert.match(source, /const started = await startGeneration\(id, input\);/);
+    assert.match(source, /if \(started\.status === "generated" && started\.result\?\.candidates\?\.length\) \{[\s\S]*return started;[\s\S]*\}/);
+    assert.match(source, /return pollGeneratedSticker\(id\);/);
+  });
+
+  test("refineSticker returns early when already generated with candidates", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.match(source, /export async function refineSticker\(/);
+    assert.match(source, /const started = await request<StickerRecord>\(`\/api\/stickers\/\$\{id\}\/refine`/);
+    assert.match(source, /if \(started\.status === "generated" && started\.result\?\.candidates\?\.length\) \{[\s\S]*return started;[\s\S]*\}/);
+    assert.match(source, /return pollGeneratedSticker\(id\);/);
+  });
+
+  test("generateSticker calls onProgress with candidate count before sending request", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.match(source, /onProgress\(0, input\?\.count \?\? 5, ""\);\s*const started = await startGeneration/);
+  });
+
+  test("refineSticker calls onProgress(0, 5, '') before sending request", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.match(source, /onProgress\(0, 5, ""\);\s*const started = await request<StickerRecord>\(`\/api\/stickers\/\$\{id\}\/refine`/);
+  });
+
+  test("startGeneration POSTs to the correct route without unnecessary headers", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.match(source, /function startGeneration\(id: string/);
+    assert.match(source, /return request<StickerRecord>\(`\/api\/stickers\/\$\{id\}\/generate`/);
+    assert.match(source, /method: "POST"/);
+  });
+
+  test("pollGeneratedSticker polls indefinitely while generating and stops on terminal status", async () => {
+    const createPollGeneratedSticker = await loadPollGeneratedSticker();
+    const records = [{ status: "generating" }, { status: "generating" }, { status: "generated", result: { candidates: ["a"] } }];
+    let pollCount = 0;
+    let waitCount = 0;
+    const pollGeneratedSticker = createPollGeneratedSticker(
+      async () => {
+        const record = records[pollCount++];
+        if (!record) {
+          throw new Error("Unexpected extra poll");
+        }
+        return record;
+      },
+      async () => {
+        waitCount += 1;
+      },
+      { now: () => 0 },
+    );
+
+    const result = await pollGeneratedSticker("sticker-1");
+    assert.equal(pollCount, 3);
+    assert.equal(waitCount, 2);
+    assert.equal(result.status, "generated");
+  });
+});
+
+describe("removed feature safety checks", () => {
+  test("uploadReferenceImage does not accept recordId or runId parameters", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.match(source, /export function uploadReferenceImage\(/);
+    assert.match(source, /fileName: string,[\s\S]*data: string,[\s\S]*theme: string,[\s\S]*description: string,/);
+    assert.doesNotMatch(source, /recordId\?: string/);
+    assert.doesNotMatch(source, /runId\?: string/);
+  });
+
+  test("does not export getCurrentSticker", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.doesNotMatch(source, /export function getCurrentSticker/);
+    assert.doesNotMatch(source, /\/api\/stickers\/current/);
+  });
+
+  test("does not use SSE or streaming for generation status", async () => {
+    const source = await readFile(new URL("./api.ts", import.meta.url), "utf8");
+
+    assert.doesNotMatch(source, /text\/event-stream/);
+    assert.doesNotMatch(source, /getReader\(/);
+    assert.doesNotMatch(source, /EventSource/);
   });
 });

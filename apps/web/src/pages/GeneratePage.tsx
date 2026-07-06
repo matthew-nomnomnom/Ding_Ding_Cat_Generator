@@ -326,13 +326,15 @@ export function GeneratePage() {
         try {
           const rec = await getSticker(session.id);
           if (rec && rec.status !== "rejected" && rec.status !== "failed" && rec.result?.candidates?.length) {
+            const firstCandidate = rec.result?.candidates?.[0] ?? "";
+            const previewsMap = rec.result?.candidatePreviews ?? {};
             restored.push({
-              previewUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+              previewUrl: getCandidatePreviewUrl(rec, firstCandidate, previewsMap),
               description: session.prompt,
               subtitle: session.festival || session.quickPick,
               time: session.time,
               record: rec,
-              previews: {},
+              previews: previewsMap,
             });
           }
         } catch {
@@ -345,6 +347,12 @@ export function GeneratePage() {
           const merged = [...restored.filter((r) => !existing.has(r.record.id)), ...prev];
           return merged;
         });
+        const latest = restored[0];
+        setRecord(latest.record);
+        setCandidatePreviews(latest.previews);
+        setSelectedPath(latest.record.result?.selectedPath ?? latest.record.result?.candidates?.[0] ?? null);
+        setDescription(latest.description);
+        setFestivalId(latest.record.theme === "general" ? "" : latest.record.theme);
       }
     })();
   }, []);
@@ -427,10 +435,14 @@ export function GeneratePage() {
         }
       }, { theme, description: prompt, referenceImagePath: refPath, referenceImageUrl: refUrl, count: candidateCount });
 
+      const previews = generatedRecord.result?.candidatePreviews ?? {};
+      setCandidatePreviews(previews);
+      previewsRef.current = previews;
+
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
       setRefineHistory((prev) => [{
-        previewUrl: historyPreviewUrl || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        previewUrl: historyPreviewUrl || getCandidatePreviewUrl(generatedRecord, generatedRecord.result?.candidates?.[0] ?? "", previews),
         description: prompt,
         subtitle: historyPreviewUrl ? "Reference image" : prompt,
         time: Date.now(),
@@ -464,6 +476,10 @@ export function GeneratePage() {
           setCandidatePreviews((prev) => ({ ...prev, [candidate]: preview }));
         }
       }, { theme, description: record.description, count: candidateCount });
+
+      const previews = generatedRecord.result?.candidatePreviews ?? {};
+      setCandidatePreviews(previews);
+      previewsRef.current = previews;
 
       setRecord(generatedRecord);
       setSelectedPath(generatedRecord.result?.selectedPath ?? generatedRecord.result?.candidates?.[0] ?? null);
@@ -509,6 +525,10 @@ export function GeneratePage() {
           }
         },
       );
+
+      const previews = refinedRecord.result?.candidatePreviews ?? {};
+      setCandidatePreviews(previews);
+      previewsRef.current = previews;
 
       setRecord(refinedRecord);
       setSelectedPath(refinedRecord.result?.selectedPath ?? refinedRecord.result?.candidates?.[0] ?? null);
@@ -572,6 +592,8 @@ export function GeneratePage() {
     setCandidatePreviews(item.previews);
     setSelectedPath(item.record.result?.selectedPath ?? item.record.result?.candidates?.[0] ?? null);
     setShowRefinePanel(false);
+    setDescription(item.description);
+    setFestivalId(item.record.theme === "general" ? "" : item.record.theme);
   }
 
   function scrollRefineHistory(direction: "left" | "right") {

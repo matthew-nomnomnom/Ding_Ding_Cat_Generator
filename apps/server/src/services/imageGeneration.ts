@@ -3,20 +3,19 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
-import { BASELINE_REFERENCE_NAMES, listBaselineReferenceUrls, listDataFolderFileUrls, listSupplementalBaselineUrls } from "./notion.js";
+import { listDataFolderFileUrls } from "./notion.js";
 import { readRuntimeBlob, uploadRuntimeCandidateBlob } from "./runtimeBlob.js";
+
+const GENERATION_FETCH_TIMEOUT_MS = 120_000; // 2 minutes per external API call
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const generatedRoot = path.join(projectRoot, "data/generated");
 const runtimeGeneratedRoot = config.runtimeGeneratedRoot;
 const baselineRoot = path.join(projectRoot, "data/baseline");
 /**
- * Maximum number of reference images passed per generation.
- * Budget: 9 mandatory (4 views + 5 emotions) + 2 supplemental + 3 theme history = 14 (Gemini limit).
+ * Maximum number of same-theme history reference images passed per generation.
  */
-const maxBaselineReferences = BASELINE_REFERENCE_NAMES.length; // 4 views + 5 emotions = 9 mandatory
-const maxSupplementalBaselineReferences = 2; // style exemplar, detail sheets, palette, etc.
-const maxThemeHistoryReferences = 3; // reduced to fit within Gemini 14-image limit (9+2+3=14)
+const maxThemeHistoryReferences = 3;
 
 type OpenAiContentPart =
   | { type: "text"; text: string }
@@ -139,6 +138,7 @@ async function uploadBufferToGemini(buffer: Buffer, mimeType: string, displayNam
         "X-Goog-Upload-Command": "upload, finalize",
       },
       body: buffer,
+      signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -161,7 +161,7 @@ async function uploadBufferToGemini(buffer: Buffer, mimeType: string, displayNam
  * as well as any other public image URL via a plain GET request.
  */
 async function fetchImageUrl(url: string): Promise<{ buffer: Buffer; contentType: string } | undefined> {
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS) });
   if (!response.ok) return undefined;
 
   const contentType = response.headers.get("content-type")?.split(";")[0] ?? "image/png";
@@ -221,6 +221,7 @@ async function geminiGenerateContent(
         contents: [{ parts }],
         generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
       }),
+      signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
     },
   );
 
@@ -332,6 +333,7 @@ async function generateWithGptImage2(
       Authorization: `Bearer ${apiKey}`,
     },
     body: formData,
+    signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -346,7 +348,7 @@ async function generateWithGptImage2(
   if (b64) {
     await writeFile(outputPath, Buffer.from(b64, "base64"));
   } else if (item?.url) {
-    const imgResponse = await fetch(item.url);
+    const imgResponse = await fetch(item.url, { signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS) });
     if (!imgResponse.ok) throw new Error(`Failed to download generated image from ${item.url}`);
     const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
     await writeFile(outputPath, imgBuffer);
@@ -538,77 +540,73 @@ async function imageUrlToContentPart(url: string): Promise<OpenAiContentPart | u
 }
 
 async function loadReferenceImageParts(record: StickerRecord): Promise<{ parts: OpenAiContentPart[]; sources: string[]; paths: string[] }> {
-  if (config.notionToken && config.notionDatabaseId) {
-    // Always retrieve the 4 mandatory canonical baseline images (front, left, right, back)
-    // plus any supplemental baseline images (style exemplars, close-ups, palettes).
-    const mandatoryUrls = await listBaselineReferenceUrls();
-    const supplementalUrls = (await listSupplementalBaselineUrls()).slice(0, maxSupplementalBaselineReferences);
-    const baselineReferenceUrls = [...mandatoryUrls, ...supplementalUrls];
+  let baselineParts: OpenAiContentPart[] = [];
+  let baselineSources: string[] = [];
+  let baselinePaths: string[] = [];
 
-    const sameThemeHistoryReferenceUrls = (await listDataFolderFileUrls("generated", slugify(record.theme))).slice(
-      0,
-      maxThemeHistoryReferences,
-    );
-    const allUrls = [...baselineReferenceUrls, ...sameThemeHistoryReferenceUrls];
-    const parts = await Promise.all(allUrls.map(imageUrlToContentPart));
-
-    return {
-      parts: parts.filter((part): part is OpenAiContentPart => Boolean(part)),
-      sources: allUrls, // Notion file URLs — Gemini upload will fetch & re-upload them
-      paths: allUrls,
-    };
-  }
-
-  // --- Local filesystem fallback (no Notion configured) ---
-  // Mandatory: lookup the 4 canonical baseline files by exact filename
-  const mandatoryBaselinePaths = (
-    await Promise.all(
-      BASELINE_REFERENCE_NAMES.map(async (name) => {
-        const found = await findBaselineFile(baselineRoot, name);
-        return found ?? null;
-      }),
-    )
-  ).filter((p): p is string => p !== null);
-
-  // Supplemental: any other image files in data/baseline/ excluding the mandatory 4
-  const allBaselinePaths = await newestFirst(await listReferenceImagePaths(baselineRoot));
-  const mandatoryNameSet = new Set(BASELINE_REFERENCE_NAMES);
-  const supplementalBaselinePaths = allBaselinePaths
-    .filter((abs) => !mandatoryNameSet.has(path.basename(abs)))
-    .slice(0, maxSupplementalBaselineReferences);
-
-  const baselineReferences = [...mandatoryBaselinePaths, ...supplementalBaselinePaths];
-
-  const themeGeneratedRoot = path.join(generatedRoot, slugify(record.theme));
-  const sameThemeHistoryReferences = (await newestFirst(await listReferenceImagePaths(themeGeneratedRoot))).slice(
-    0,
-    maxThemeHistoryReferences,
-  );
-  const references = [...baselineReferences, ...sameThemeHistoryReferences];
-
-  return {
-    parts: await Promise.all(references.map(imagePathToContentPart)),
-    sources: references, // absolute paths — Gemini upload reads files from disk
-    paths: references.map((abs) => abs.replace(projectRoot, "").replace(/^[\\/]/, "").replace(/\\/g, "/")),
-  };
-}
-
-/**
- * Recursively searches for a file with the given name inside a directory tree.
- * Returns the absolute path if found, undefined otherwise.
- */
-async function findBaselineFile(directory: string, targetName: string): Promise<string | undefined> {
-  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
-  for (const entry of entries) {
-    const entryPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      const found = await findBaselineFile(entryPath, targetName);
-      if (found) return found;
-    } else if (entry.isFile() && entry.name === targetName) {
-      return entryPath;
+  // 1) Single canonical reference from Vercel Blob (preferred)
+  if (config.blobReadWriteToken) {
+    try {
+      const body = await readRuntimeBlob(config.canonicalReferenceBlobPathname);
+      if (body) {
+        const ext = path.extname(config.canonicalReferenceBlobPathname).toLowerCase();
+        const mime = ext === ".webp" ? "image/webp" : "image/png";
+        baselineParts = [{ type: "image_url", image_url: { url: `data:${mime};base64,${body.toString("base64")}`, detail: "high" } }];
+        baselineSources = [config.canonicalReferenceBlobPathname];
+        baselinePaths = [config.canonicalReferenceBlobPathname];
+      }
+    } catch {
+      // Blob read failed — fall through to local
     }
   }
-  return undefined;
+
+  // 2) Fallback: single local turnaround.png in data/baseline/
+  if (baselineParts.length === 0) {
+    const turnaroundPath = path.join(baselineRoot, "ding-ding-cat", "turnaround.png");
+    try {
+      await stat(turnaroundPath);
+      baselineParts = [await imagePathToContentPart(turnaroundPath)];
+      baselineSources = [turnaroundPath];
+      baselinePaths = [turnaroundPath.replace(projectRoot, "").replace(/^[\\/]/, "").replace(/\\/g, "/")];
+    } catch {
+      // File not found
+    }
+  }
+
+  // 3) Last resort: first available file in data/baseline/
+  if (baselineParts.length === 0) {
+    const files = await newestFirst(await listReferenceImagePaths(baselineRoot));
+    if (files.length > 0) {
+      baselineParts = [await imagePathToContentPart(files[0])];
+      baselineSources = [files[0]];
+      baselinePaths = [files[0].replace(projectRoot, "").replace(/^[\\/]/, "").replace(/\\/g, "/")];
+    }
+  }
+
+  // Theme history references
+  let themeHistoryParts: OpenAiContentPart[] = [];
+  let themeHistorySources: string[] = [];
+  let themeHistoryPaths: string[] = [];
+
+  if (config.notionToken && config.notionDatabaseId) {
+    const themeUrls = (await listDataFolderFileUrls("generated", slugify(record.theme))).slice(0, maxThemeHistoryReferences);
+    const parts = await Promise.all(themeUrls.map(imageUrlToContentPart));
+    themeHistoryParts = parts.filter((part): part is OpenAiContentPart => Boolean(part));
+    themeHistorySources = themeUrls;
+    themeHistoryPaths = themeUrls;
+  } else {
+    const themeGeneratedRoot = path.join(generatedRoot, slugify(record.theme));
+    const themeFiles = (await newestFirst(await listReferenceImagePaths(themeGeneratedRoot))).slice(0, maxThemeHistoryReferences);
+    themeHistoryParts = await Promise.all(themeFiles.map(imagePathToContentPart));
+    themeHistorySources = themeFiles;
+    themeHistoryPaths = themeFiles.map((abs) => abs.replace(projectRoot, "").replace(/^[\\/]/, "").replace(/\\/g, "/"));
+  }
+
+  return {
+    parts: [...baselineParts, ...themeHistoryParts],
+    sources: [...baselineSources, ...themeHistorySources],
+    paths: [...baselinePaths, ...themeHistoryPaths],
+  };
 }
 
 async function loadSelectedImagePart(selectedImagePath?: string, selectedImageUrl?: string): Promise<{ parts: OpenAiContentPart[]; sources: string[] }> {
@@ -792,6 +790,7 @@ async function generateWithImageProvider(
       modalities: ["image"],
       n: 1,
     }),
+    signal: AbortSignal.timeout(GENERATION_FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -855,6 +854,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
 
   const isLive = Boolean(config.gptImageModel || config.geminiApiKey || config.nanoBananaApiKey || config.imageGenerationApiKey);
   const candidateUrls: Record<string, string> = {};
+  const candidatePreviews: Record<string, string> = {};
   let completedCount = 0;
   const settled: Array<{ index: number; candidatePath: string }> = [];
   const failures: unknown[] = [];
@@ -910,6 +910,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
       const mime = `image/${path.extname(absolutePath).toLowerCase() === ".svg" ? "svg+xml" : "png"}`;
       const raw = await readFile(absolutePath);
       const preview = `data:${mime};base64,${raw.toString("base64")}`;
+      candidatePreviews[candidatePath] = preview;
       options.onProgress?.(completedCount, count, candidatePath, preview);
 
       logGenerationStep("candidate_progress", {
@@ -966,6 +967,7 @@ export async function generateSticker(record: StickerRecord, options: GenerateOp
     format: record.format,
     candidates,
     candidateUrls,
+    candidatePreviews,
     localPath: candidates[0],
     selectedPath: candidates[0],
     refinementRequirement: options.refinementRequirement,

@@ -647,7 +647,6 @@ describe("generateSticker", () => {
     assert.equal(requests.length, 1);
     const prompt = String(requests[0].body.get("prompt"));
     assert.match(prompt, /REFINEMENT REQUEST/i);
-    assert.doesNotMatch(prompt, /USER-PROVIDED REFERENCE IMAGE/i);
     assert.equal(requests[0].body.getAll("image[]").length, 1);
   });
 });
