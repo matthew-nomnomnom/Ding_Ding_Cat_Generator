@@ -3202,30 +3202,50 @@ body {
   right: 10px;
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
   background: var(--oliver-forest);
   color: #fff;
+  border: 0;
   font-size: 11px;
   font-weight: 700;
-  text-decoration: none;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.16s ease, transform 0.16s ease;
-  pointer-events: none;
+  cursor: pointer;
+  opacity: 1;
   z-index: 3;
+  font-family: inherit;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 4px 12px rgba(31,91,69,0.2);
+  transition: all 0.2s ease;
 }
 
 .card-download-btn:hover {
-  background: var(--oliver-forest-dark);
-  color: #fff;
+  background: var(--oliver-green);
+  transform: scale(1.05);
 }
 
-.strip-card:hover .card-download-btn,
-.accepted-card:hover .card-download-btn {
+.card-delete-btn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: #c75948;
+  color: #fff;
+  border: 0;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
   opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
+  z-index: 3;
+  font-family: inherit;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 4px 12px rgba(199,89,72,0.2);
+  transition: all 0.2s ease;
+}
+
+.card-delete-btn:hover {
+  background: #b04a3a;
+  transform: scale(1.05);
 }
 
 .strip-badge {
