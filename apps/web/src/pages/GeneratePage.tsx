@@ -541,8 +541,8 @@ export function GeneratePage() {
     setDeciding(action);
     setBusy(false);
 
+    const recId = record.id;
     try {
-      const recId = record.id;
       if (action === "reject") {
         await rejectSticker(record.id, { reason: rejectReason.trim() || undefined });
         setRejectReason("");
@@ -556,10 +556,12 @@ export function GeneratePage() {
       setRecord(null);
       setSelectedPath(null);
       removeSession(recId);
+      setRefineHistory((prev) => prev.filter((h) => h.record.id !== recId));
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : `Failed to ${action} sticker`);
       setRecord(null);
       setSelectedPath(null);
+      setRefineHistory((prev) => prev.filter((h) => h.record.id !== recId));
     } finally {
       setDeciding(null);
     }
