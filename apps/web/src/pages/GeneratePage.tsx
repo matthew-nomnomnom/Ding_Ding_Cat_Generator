@@ -1057,7 +1057,7 @@ export function GeneratePage() {
         </section>
       )}
 
-      <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator · Built for a crisp, premium brand experience</footer>
+      <footer className="footer-mark">TramPlus Ding Ding Cat AI Image Generator</footer>
 
       {toast ? (
         <div className="toast" onClick={() => setToast(null)}>
